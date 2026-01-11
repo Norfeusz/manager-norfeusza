@@ -7,13 +7,25 @@ const router = Router()
 // Utwórz nowy projekt
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { name, albumId = 'Robocze' } = req.body as CreateProjectRequest
+    const { 
+      name, 
+      albumId = 'Robocze',
+      useNumbering = true,
+      numberingMode = 'auto',
+      projectNumber
+    } = req.body as CreateProjectRequest
 
     if (!name || name.trim() === '') {
       return res.status(400).json({ success: false, error: 'Nazwa projektu jest wymagana' })
     }
 
-    const project = await fileSystemService.createProject(name.trim(), albumId)
+    const project = await fileSystemService.createProject(
+      name.trim(), 
+      albumId,
+      useNumbering,
+      numberingMode,
+      projectNumber
+    )
     res.json({ success: true, data: project })
   } catch (error: any) {
     console.error('Error creating project:', error)

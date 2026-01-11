@@ -7,10 +7,13 @@ Zaawansowane narzędzie webowe do zarządzania projektami muzycznymi i procesem 
 ### ✅ Faza 1: Podstawy (Ukończona)
 - Zarządzanie albumami muzycznymi
 - Tworzenie projektów (utworów) z automatyczną strukturą folderów
+- **Numeracja projektów (01, 02, 03...) z trybem automatycznym i ręcznym**
+- **Automatyczne przesuwanie numerów przy ręcznym nadawaniu**
 - Nawigacja: Albumy → Projekty → Podfoldery
 - Automatyczna inicjalizacja albumu "Robocze"
 
 ### ✅ Faza 2: Zarządzanie Plikami (Ukończona)
+- **Sortownia** - tymczasowy folder dla plików przed przypisaniem do projektu
 - Przeglądanie plików w 8 podfolderach każdego projektu
 - Upload plików z automatycznym nazewnictwem
 - System wersjonowania (001, 002, 003...)
@@ -74,6 +77,16 @@ Manager Norfa/
 ```
 
 ## 📂 Struktura Muzyczna
+
+### Numeracja Projektów
+
+Projekty mogą być numerowane w formacie `01 - Nazwa utworu`, `02 - Nazwa utworu` itd.
+
+- **Automatyczna numeracja** - system przydziela kolejny dostępny numer
+- **Ręczna numeracja** - możliwość nadania konkretnego numeru (1-99)
+- **Przesuwanie numerów** - jeśli nadasz numer 5, a projekt "05 - ..." już istnieje, zostanie przesunięty na 06, następny na 07 itd.
+
+### Struktura Podfolderów
 
 Każdy projekt (utwór) zawiera 8 podfolderów:
 

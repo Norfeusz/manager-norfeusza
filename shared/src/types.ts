@@ -32,6 +32,9 @@ export interface FolderStructure {
 export interface CreateProjectRequest {
   name: string;
   albumId?: string; // domyślnie "Robocze"
+  useNumbering?: boolean; // domyślnie true
+  numberingMode?: 'auto' | 'manual'; // domyślnie 'auto'
+  projectNumber?: number; // jeśli numberingMode = 'manual'
 }
 
 export interface CreateAlbumRequest {

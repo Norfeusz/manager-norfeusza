@@ -12,6 +12,9 @@ export default function ProjectList() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newProjectName, setNewProjectName] = useState('')
   const [creating, setCreating] = useState(false)
+  const [useNumbering, setUseNumbering] = useState(true)
+  const [numberingMode, setNumberingMode] = useState<'auto' | 'manual'>('auto')
+  const [manualNumber, setManualNumber] = useState('')
 
   useEffect(() => {
     if (albumId) {
@@ -23,13 +26,37 @@ export default function ProjectList() {
     try {
       setLoading(true)
       const data = await api.getProjectsByAlbum(albumId!)
-      setProjects(data)
+      
+      // Sortowanie: najpierw projekty z numeracją (01, 02, 03...), potem alfabetycznie reszta
+      const sorted = data.sort((a, b) => {
+        const numA = extractNumber(a.name)
+        const numB = extractNumber(b.name)
+
+        // Oba mają numery - sortuj według numerów
+        if (numA !== null && numB !== null) return numA - numB
+        
+        // Tylko a ma numer - a na początku
+        if (numA !== null) return -1
+        
+        // Tylko b ma numer - b na początku
+        if (numB !== null) return 1
+        
+        // Żaden nie ma numeru - sortuj alfabetycznie
+        return a.name.localeCompare(b.name)
+      })
+      
+      setProjects(sorted)
       setError(null)
     } catch (err: any) {
       setError(err.message)
     } finally {
       setLoading(false)
     }
+  }
+
+  function extractNumber(projectName: string): number | null {
+    const match = projectName.match(/^(\d{2})\s*-\s*/)
+    return match ? parseInt(match[1], 10) : null
   }
 
   async function handleCreateProject() {
@@ -40,8 +67,12 @@ export default function ProjectList() {
       await api.createProject({
         name: newProjectName.trim(),
         albumId: albumId,
+        useNumbering,
+        numberingMode,
+        projectNumber: numberingMode === 'manual' && manualNumber ? parseInt(manualNumber) : undefined,
       })
       setNewProjectName('')
+      setManualNumber('')
       setShowCreateModal(false)
       loadProjects()
     } catch (err: any) {
@@ -154,7 +185,8 @@ export default function ProjectList() {
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
-            <h2 className="text-2xl font-bold mb-4">Nowy Projekt</h2>
+            <h2 className="text-2xl font-bold mb-6">Nowy Projekt</h2>
+            
             <input
               type="text"
               value={newProjectName}
@@ -164,7 +196,63 @@ export default function ProjectList() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-green-500"
               autoFocus
             />
-            <div className="flex gap-3">
+
+            {/* Checkbox numeracji */}
+            <div className="mb-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={useNumbering}
+                  onChange={(e) => setUseNumbering(e.target.checked)}
+                  className="w-4 h-4 text-green-600 rounded focus:ring-2 focus:ring-green-500"
+                />
+                <span className="text-gray-700 font-medium">Numeracja (01, 02, 03...)</span>
+              </label>
+            </div>
+
+            {/* Opcje numeracji */}
+            {useNumbering && (
+              <div className="mb-4 pl-6 space-y-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={numberingMode === 'auto'}
+                    onChange={() => setNumberingMode('auto')}
+                    className="w-4 h-4 text-green-600"
+                  />
+                  <span className="text-gray-700">Kolejny numer (automatycznie)</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={numberingMode === 'manual'}
+                    onChange={() => setNumberingMode('manual')}
+                    className="w-4 h-4 text-green-600"
+                  />
+                  <span className="text-gray-700">Nadaj numer ręcznie</span>
+                </label>
+
+                {numberingMode === 'manual' && (
+                  <input
+                    type="number"
+                    min="1"
+                    value={manualNumber}
+                    onChange={(e) => setManualNumber(e.target.value)}
+                    placeholder="Wpisz numer (np. 5)"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg ml-6 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                )}
+
+                {numberingMode === 'manual' && (
+                  <p className="text-xs text-gray-500 ml-6">
+                    Jeśli projekt z tym numerem istnieje, wszystkie kolejne zostaną przesunięte
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-3 mt-6">
               <button
                 onClick={handleCreateProject}
                 disabled={creating || !newProjectName.trim()}
@@ -176,6 +264,9 @@ export default function ProjectList() {
                 onClick={() => {
                   setShowCreateModal(false)
                   setNewProjectName('')
+                  setManualNumber('')
+                  setUseNumbering(true)
+                  setNumberingMode('auto')
                 }}
                 className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-lg font-semibold transition"
               >

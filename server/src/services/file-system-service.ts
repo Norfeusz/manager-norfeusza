@@ -18,6 +18,13 @@ export class FileSystemService {
       await fs.ensureDir(roboczePath)
       console.log('✅ Utworzono album "Robocze"')
     }
+
+    // Sprawdź czy istnieje folder "Sortownia"
+    const sortowniaPath = path.join(this.albumsPath, 'Sortownia')
+    if (!(await fs.pathExists(sortowniaPath))) {
+      await fs.ensureDir(sortowniaPath)
+      console.log('✅ Utworzono folder "Sortownia"')
+    }
   }
 
   async getAlbums(): Promise<Album[]> {
@@ -25,7 +32,7 @@ export class FileSystemService {
     const albums: Album[] = []
 
     for (const item of items) {
-      if (item.isDirectory()) {
+      if (item.isDirectory() && item.name !== 'Sortownia') {
         const albumPath = path.join(this.albumsPath, item.name)
         const stats = await fs.stat(albumPath)
         const projects = await this.getProjects(item.name)
@@ -97,21 +104,102 @@ export class FileSystemService {
     return projects.sort((a, b) => a.name.localeCompare(b.name))
   }
 
-  async createProject(name: string, albumId: string = 'Robocze'): Promise<Project> {
+  // Wyciągnij numer z nazwy projektu (np. "01 - Nazwa" -> 1)
+  private extractProjectNumber(projectName: string): number | null {
+    const match = projectName.match(/^(\d{2})\s*-\s*/)
+    return match ? parseInt(match[1], 10) : null
+  }
+
+  // Pobierz następny dostępny numer w albumie
+  private async getNextProjectNumber(albumId: string): Promise<number> {
+    const projects = await this.getProjects(albumId)
+    const numbers = projects
+      .map((p) => this.extractProjectNumber(p.name))
+      .filter((n): n is number => n !== null)
+
+    if (numbers.length === 0) return 1
+    return Math.max(...numbers) + 1
+  }
+
+  // Sprawdź czy projekt z danym numerem istnieje
+  private async projectWithNumberExists(albumId: string, number: number): Promise<boolean> {
+    const projects = await this.getProjects(albumId)
+    return projects.some((p) => this.extractProjectNumber(p.name) === number)
+  }
+
+  // Przesuń projekty o numer większy lub równy podanemu
+  private async shiftProjectNumbers(albumId: string, fromNumber: number): Promise<void> {
+    const albumPath = path.join(this.albumsPath, albumId)
+    const projects = await this.getProjects(albumId)
+
+    // Sortuj projekty od największego numeru do najmniejszego (żeby uniknąć konfliktów)
+    const projectsToShift = projects
+      .map((p) => ({
+        project: p,
+        number: this.extractProjectNumber(p.name),
+      }))
+      .filter((p): p is { project: Project; number: number } => 
+        p.number !== null && p.number >= fromNumber
+      )
+      .sort((a, b) => b.number - a.number)
+
+    for (const { project, number } of projectsToShift) {
+      const newNumber = number + 1
+      const nameWithoutNumber = project.name.replace(/^\d{2}\s*-\s*/, '')
+      const newName = `${newNumber.toString().padStart(2, '0')} - ${nameWithoutNumber}`
+      const newPath = path.join(albumPath, newName)
+
+      await fs.rename(project.path, newPath)
+      console.log(`📝 Przesunięto: ${project.name} -> ${newName}`)
+    }
+  }
+
+  async createProject(
+    name: string,
+    albumId: string = 'Robocze',
+    useNumbering: boolean = true,
+    numberingMode: 'auto' | 'manual' = 'auto',
+    projectNumber?: number
+  ): Promise<Project> {
     const albumPath = path.join(this.albumsPath, albumId)
 
     if (!(await fs.pathExists(albumPath))) {
       throw new Error(`Album "${albumId}" nie istnieje`)
     }
 
-    const projectPath = path.join(albumPath, name)
+    let finalProjectName = name
+
+    // Obsługa numeracji
+    if (useNumbering) {
+      let number: number
+
+      if (numberingMode === 'auto') {
+        // Automatycznie przydziel następny numer
+        number = await this.getNextProjectNumber(albumId)
+      } else {
+        // Użyj numeru podanego ręcznie
+        if (projectNumber === undefined || projectNumber < 1) {
+          throw new Error('Podaj prawidłowy numer projektu (1 lub większy)')
+        }
+        number = projectNumber
+
+        // Jeśli projekt z tym numerem istnieje, przesuń wszystkie kolejne
+        if (await this.projectWithNumberExists(albumId, number)) {
+          await this.shiftProjectNumbers(albumId, number)
+        }
+      }
+
+      finalProjectName = `${number.toString().padStart(2, '0')} - ${name}`
+    }
+
+    const projectPath = path.join(albumPath, finalProjectName)
 
     if (await fs.pathExists(projectPath)) {
-      throw new Error(`Projekt "${name}" już istnieje w albumie "${albumId}"`)
+      throw new Error(`Projekt "${finalProjectName}" już istnieje w albumie "${albumId}"`)
     }
 
     // Tworzenie struktury folderów projektu
-    const structure = this.getProjectStructure(projectPath, name)
+    const structure = this.getProjectStructure(projectPath, finalProjectName)
 
     await fs.ensureDir(path.join(projectPath, 'Projekt FL'))
     await fs.ensureDir(path.join(projectPath, 'Projekt Reaper'))
@@ -124,11 +212,11 @@ export class FileSystemService {
 
     const stats = await fs.stat(projectPath)
 
-    console.log(`✅ Utworzono projekt "${name}" w albumie "${albumId}"`)
+    console.log(`✅ Utworzono projekt "${finalProjectName}" w albumie "${albumId}"`)
 
     return {
       id: uuidv4(),
-      name,
+      name: finalProjectName,
       albumId,
       path: projectPath,
       createdAt: stats.birthtime.toISOString(),
@@ -137,7 +225,7 @@ export class FileSystemService {
     }
   }
 
-  private getProjectStructure(projectPath: string, projectName: string): FolderStructure {
+  private getProjectStructure(projectPath: string, _projectName: string): FolderStructure {
     return {
       projektFL: path.join(projectPath, 'Projekt FL'),
       projektReaper: path.join(projectPath, 'Projekt Reaper'),

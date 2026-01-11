@@ -5,7 +5,7 @@ import { CreateAlbumRequest } from '../../../shared/src/types'
 const router = Router()
 
 // Pobierz wszystkie albumy
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (_req: Request, res: Response) => {
   try {
     const albums = await fileSystemService.getAlbums()
     res.json({ success: true, data: albums })

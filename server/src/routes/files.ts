@@ -1,6 +1,5 @@
 import { Router, Request, Response } from 'express'
 import multer from 'multer'
-import path from 'path'
 import { fileManagementService } from '../services/file-management-service'
 import { MoveFileRequest, RenameFileRequest, DeleteFileRequest, FolderType } from '../../../shared/src/types'
 

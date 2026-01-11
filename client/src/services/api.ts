@@ -125,4 +125,54 @@ export const api = {
     })
     return handleResponse(response)
   },
+
+  // Sortownia
+  async getSortowniaFiles(): Promise<any[]> {
+    const response = await fetch(`${API_BASE}/sortownia`)
+    return handleResponse<any[]>(response)
+  },
+
+  async uploadToSortownia(file: File): Promise<{ path: string; name: string }> {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await fetch(`${API_BASE}/sortownia/upload`, {
+      method: 'POST',
+      body: formData,
+    })
+    return handleResponse(response)
+  },
+
+  async moveFromSortownia(
+    fileName: string,
+    albumId: string,
+    projectName: string,
+    targetFolder: string,
+    fileType?: string
+  ): Promise<{ newPath: string; newName: string }> {
+    const response = await fetch(`${API_BASE}/sortownia/move-to-project`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileName, albumId, projectName, targetFolder, fileType }),
+    })
+    return handleResponse(response)
+  },
+
+  async deleteSortowniaFile(filePath: string): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE}/sortownia`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filePath }),
+    })
+    return handleResponse(response)
+  },
+
+  async openSortowniaFile(filePath: string): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE}/sortownia/open`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filePath }),
+    })
+    return handleResponse(response)
+  },
 }

@@ -184,6 +184,92 @@ export class FileManagementService {
       })
     })
   }
+
+  // SORTOWNIA - Pobierz pliki z sortowni
+  async getSortowniaFiles(): Promise<FileInfo[]> {
+    const sortowniaPath = path.join(BASE_PATH, 'Sortownia')
+    
+    if (!(await fs.pathExists(sortowniaPath))) {
+      await fs.ensureDir(sortowniaPath)
+      return []
+    }
+
+    const items = await fs.readdir(sortowniaPath, { withFileTypes: true })
+    const files: FileInfo[] = []
+
+    for (const item of items) {
+      if (!item.isDirectory()) {
+        const itemPath = path.join(sortowniaPath, item.name)
+        const stats = await fs.stat(itemPath)
+
+        files.push({
+          name: item.name,
+          path: itemPath,
+          size: stats.size,
+          extension: path.extname(item.name).toLowerCase(),
+          createdAt: stats.birthtime.toISOString(),
+          modifiedAt: stats.mtime.toISOString(),
+          isDirectory: false,
+        })
+      }
+    }
+
+    return files.sort((a, b) => a.name.localeCompare(b.name))
+  }
+
+  // SORTOWNIA - Przenieś plik z sortowni do projektu
+  async moveFromSortownia(
+    fileName: string,
+    albumId: string,
+    projectName: string,
+    targetFolder: FolderType,
+    specificType?: string
+  ): Promise<{ newPath: string; newName: string }> {
+    const sourcePath = path.join(BASE_PATH, 'Sortownia', fileName)
+
+    if (!(await fs.pathExists(sourcePath))) {
+      throw new Error('Plik nie istnieje w sortowni')
+    }
+
+    const targetFolderPath = path.join(BASE_PATH, albumId, projectName, targetFolder)
+    await fs.ensureDir(targetFolderPath)
+
+    const extension = path.extname(sourcePath)
+    const existingFiles = (await fs.readdir(targetFolderPath)).filter((f) =>
+      f.endsWith(extension)
+    )
+
+    const fileType = this.getFileTypeByFolder(targetFolder, specificType)
+    const newFileName = this.generateFileName(projectName, fileType, extension, existingFiles)
+    const newPath = path.join(targetFolderPath, newFileName)
+
+    await fs.move(sourcePath, newPath, { overwrite: false })
+
+    return { newPath, newName: newFileName }
+  }
+
+  // SORTOWNIA - Upload pliku do sortowni
+  async uploadToSortownia(file: Express.Multer.File): Promise<{ path: string; name: string }> {
+    const sortowniaPath = path.join(BASE_PATH, 'Sortownia')
+    await fs.ensureDir(sortowniaPath)
+
+    const fileName = file.originalname
+    const filePath = path.join(sortowniaPath, fileName)
+
+    // Jeśli plik o takiej nazwie już istnieje, dodaj timestamp
+    let finalPath = filePath
+    if (await fs.pathExists(filePath)) {
+      const timestamp = Date.now()
+      const ext = path.extname(fileName)
+      const nameWithoutExt = path.basename(fileName, ext)
+      const newFileName = `${nameWithoutExt}_${timestamp}${ext}`
+      finalPath = path.join(sortowniaPath, newFileName)
+    }
+
+    await fs.move(file.path, finalPath)
+
+    return { path: finalPath, name: path.basename(finalPath) }
+  }
 }
 
 export const fileManagementService = new FileManagementService()
