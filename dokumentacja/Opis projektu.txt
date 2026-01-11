@@ -1,0 +1,47 @@
+1. Zacznijmy od struktury folderu
+Każdy projekt - utwór ma swój folder, a w nim podfoldery:
+-Projekt FL - nazwy plików: nazwa_utworu-projekt_bit-wersja(001, 002, itd)
+-Projekt Reaper - nazwy plików: nazwa_utworu-projekt_nawijka-wersja(001, 002, itd)
+-Tekst - nazwy plików: nazwa_utworu-tekst-wersja(001, 002, itd)
+-Demo bit - nazwy plików: nazwa_utworu-bit_demo-wersja(001, 002, itd)
+-Demo nawijka - nazwy plików: nazwa_utworu-nawijka_demo-wersja(001, 002, itd)
+-Demo utwór - nazwy plików: nazwa_utworu-utwor_demo-wersja(001, 002, itd)
+-Gotowe - nazwy plików: nazwa_utworu-bit_gotowy-wersja(001, 002, itd), nazwa_utworu-nawijka_gotowy-wersja(001, 002, itd), nazwa_utworu-gotowy-wersja(001, 002, itd)
+-Pliki
+
+2. Każdy projekt mieści się wewnątrz głównego folderu Album
+
+3. Każdy nowy projekt trafia do albumu - Robocze
+
+4.Struktra UI
+
+5. Kafelki z albumami
+
+6. Po wejściu w album - lista utworów (projektów)
+
+7. Po wejściu w utwór kafelki z podfolderami
+
+8 Po kliknięciu w Projekt FL - wybieramy utwórz nowy / edytuj istniejący (projekty które znajdują się w tym folderze)
+
+9. Musimy jakoś zautomatyzować proces zapisu w FL, tak aby projekt automatycznie zapisywał sie w oczekiwanym folderze, a pliki rednerowały się w oczekiwanym folderze
+
+10. Projekt w FL powienien automatycznie renderować się do folderu Demo bit - nazwa: nazwa_projektu-bit-demo-01 - ostatni człon to za każdym razem coraz wyższa liczba
+
+11. Analogicznie z projektem reaper - tylko renderujemy do Demo nawijka i nazywamy nazwa_projektu-nawijka-demo-01
+
+12 Po wejściu w Tekst - lista plików .txt - z opcją otworzenia, usunięcia
+
+13. Po wejściu w demo bit - lista plików mp3 i wav - z opcją odtworzenia, usunięcia, zmiany nazwy, przeniesienia -> do Demo utwór / Demo nawijka / Gotowe - wybór: bit/ nawijka / utwór - W każdym przypadku automatyczna zmiana nazwy zgodnie z dokonanym wyborem
+
+14. Po wejściu w demo nawijka - lista plików mp3 i wav - z opcją odtworzenia, usunięcia, zmiany nazwy, przeniesienia -> do Demo utwór / Demo bit / Gotowe - wybór: bit/ nawijka / utwór - W każdym przypadku automatyczna zmiana nazwy zgodnie z dokonanym wyborem
+
+15. Po wejściu w demo utwór - lista plików mp3 i wav - z opcją odtworzenia, usunięcia, zmiany nazwy, przeniesienia -> do Demo nawijka / Demo bit / Gotowe - wybór: bit/ nawijka / utwór - W każdym przypadku automatyczna zmiana nazwy zgodnie z dokonanym wyborem
+
+16. Po wejściu w gotowe - lista plików mp3 i wav - z opcją odtworzenia, usunięcia, zmiany nazwy, przeniesienia -> do Demo nawijka / Demo bit / demo utwór
+
+17. Po wejściu w Pliki - lista plików w różnych fomatach z opcją otworzenia, usunięcia, zmiany nazwy
+
+18. Funkcje ogólne:
+a) dodaj projekt - tworzy całą strukturę nowego projektu z opcją wczytaj pliki - te wybieramy ręcznie, albo przeciągamy - każdy plik możemy przypisać do konkretnego folderu z automatycznym nazewnictwem
+b) importuj teksty - wgrywamy plik z backupem z aplikacji androida szybki notatnik - plik jest rozpakowywany - sprawdzana jest każda notatka - porównywana jest z zawartością plików w folderach Tekst - jeśli jakiś tekst pokrywa się w 100% z istniejącym w projekcie plikiem jest pomijany, jeśli jakiś tekst pokrywa się w 30% z istniejacym w projekcie plikiem - tworzymy nowy pilk .txt jako kolejną wersję tekstu danego utworu, jeśli jakiś tekt nie pokrywa się w 30% z żadnym istniejącym w żadnym projekcie plikiem mamy do wyboru: przypisz tekst do istniejącego projektu / utwórz nowy projekt
+c) aktualizuj backup - cała struktura wszystich projektów będzie powielona na dysku google (jeśli będzie się mieścić, jeśli nie to na dysku wymiennym) - wtedy nastąpi porównanie zawarości Folderu głównego z tym co na dysku z backupem - zmiany zostaną naniesione (jeśli w nowej wersji będzie brakować plików względem backupu - decyzja czy usuwamy brakujące pliki, czy zostawiamy w backupie, z opcją "nie pytaj więcej o te konkretne pliki") 
