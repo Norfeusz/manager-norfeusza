@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import AlbumGrid from './components/AlbumGrid'
 import ProjectList from './components/ProjectList'
 import ProjectView from './components/ProjectView'
+import FolderView from './components/FolderView'
 
 function App() {
   return (
@@ -10,6 +11,7 @@ function App() {
         <Route path="/" element={<AlbumGrid />} />
         <Route path="/album/:albumId" element={<ProjectList />} />
         <Route path="/project/:albumId/:projectName" element={<ProjectView />} />
+        <Route path="/folder/:albumId/:projectName/:folderType" element={<FolderView />} />
       </Routes>
     </Router>
   )

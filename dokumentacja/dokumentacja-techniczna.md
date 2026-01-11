@@ -268,6 +268,7 @@ GOOGLE_DRIVE_CLIENT_SECRET=
 - **Struktura projektu**: `D:\DATA\Norfeusz\[Album]\[Projekt]\[8 podfolderów]`
 
 ### 8 podfolderów każdego projektu:
+
 1. `Projekt FL` - projekty FL Studio
 2. `Projekt Reaper` - projekty Reaper
 3. `Tekst` - pliki tekstowe z tekstami
@@ -344,6 +345,7 @@ npm start
 ## Stan Projektu
 
 ### ✅ Faza 1: Podstawy (UKOŃCZONA)
+
 1. ✅ Widok albumów (kafelki)
 2. ✅ Widok utworów w albumie (lista)
 3. ✅ Tworzenie nowego projektu (struktura folderów)
@@ -352,6 +354,7 @@ npm start
 6. ✅ Routing i nawigacja
 
 ### 📋 Faza 2: Zarządzanie Plikami (Następna)
+
 1. Przeglądanie zawartości podfolderów
 2. System wersjonowania nazw
 3. Przenoszenie plików między folderami
@@ -359,11 +362,13 @@ npm start
 5. Upload plików (drag & drop)
 
 ### 📋 Faza 3: Multimedia
+
 6. Odtwarzacz audio (demo/gotowe)
 7. Edytor tekstów
 8. Integracja z Windows Media Player
 
 ### 📋 Faza 4: Zaawansowane
+
 9. Import tekstów z Android backup
 10. Automatyzacja FL Studio / Reaper (badanie możliwości)
 11. System backupów (Google Drive)
@@ -374,6 +379,7 @@ npm start
 **Format**: `nazwa_utworu-typ-kategoria-wersja`
 
 Przykłady:
+
 - `moj_utwor-projekt_bit-001.flp`
 - `moj_utwor-projekt_nawijka-002.rpp`
 - `moj_utwor-tekst-003.txt`
@@ -400,12 +406,14 @@ Przykłady:
 ## Zależności
 
 ### Backend
+
 - express, cors, dotenv
 - fs-extra - operacje na plikach
 - uuid - generowanie ID
 - tsx - TypeScript execution
 
 ### Frontend
+
 - React 18 + React Router
 - Vite - build tool
 - Tailwind CSS - stylowanie

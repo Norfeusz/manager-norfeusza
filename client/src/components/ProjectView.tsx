@@ -83,6 +83,7 @@ export default function ProjectView() {
           {folders.map((folder) => (
             <div
               key={folder.name}
+              onClick={() => navigate(`/folder/${albumId}/${projectName}/${encodeURIComponent(folder.name)}`)}
               className={`${folder.color} rounded-lg shadow-md hover:shadow-xl transition cursor-pointer p-8 border-2 border-transparent hover:${folder.borderColor}`}
             >
               <div className="flex flex-col items-center text-center">
@@ -103,9 +104,6 @@ export default function ProjectView() {
           <div className="space-y-2 text-gray-600">
             <p><strong>Album:</strong> {albumId}</p>
             <p><strong>Projekt:</strong> {projectName}</p>
-            <p className="text-sm mt-4 text-gray-500">
-              Funkcjonalność podfolderów zostanie zaimplementowana w kolejnych fazach
-            </p>
           </div>
         </div>
       </div>

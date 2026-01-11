@@ -3,6 +3,7 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import albumsRouter from './routes/albums'
 import projectsRouter from './routes/projects'
+import filesRouter from './routes/files'
 import { fileSystemService } from './services/file-system-service'
 
 dotenv.config()
@@ -25,6 +26,7 @@ app.get('/api/health', (req, res) => {
 // Routes
 app.use('/api/albums', albumsRouter)
 app.use('/api/projects', projectsRouter)
+app.use('/api/files', filesRouter)
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`)

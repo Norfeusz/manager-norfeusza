@@ -54,4 +54,75 @@ export const api = {
     const response = await fetch(`${API_BASE}/health`)
     return response.json()
   },
+
+  // Pliki
+  async getFilesInFolder(albumId: string, projectName: string, folderType: string): Promise<any[]> {
+    const response = await fetch(
+      `${API_BASE}/files/${albumId}/${encodeURIComponent(projectName)}/files/${folderType}`
+    )
+    return handleResponse<any[]>(response)
+  },
+
+  async moveFile(
+    albumId: string,
+    projectName: string,
+    sourcePath: string,
+    targetFolder: string,
+    fileType?: string
+  ): Promise<{ newPath: string; newName: string }> {
+    const response = await fetch(`${API_BASE}/files/${albumId}/${encodeURIComponent(projectName)}/files/move`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sourcePath, targetFolder, fileType }),
+    })
+    return handleResponse(response)
+  },
+
+  async renameFile(albumId: string, projectName: string, filePath: string, newName: string): Promise<{ newPath: string }> {
+    const response = await fetch(`${API_BASE}/files/${albumId}/${encodeURIComponent(projectName)}/files/rename`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filePath, newName }),
+    })
+    return handleResponse(response)
+  },
+
+  async deleteFile(albumId: string, projectName: string, filePath: string): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE}/files/${albumId}/${encodeURIComponent(projectName)}/files`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filePath }),
+    })
+    return handleResponse(response)
+  },
+
+  async uploadFile(
+    albumId: string,
+    projectName: string,
+    file: File,
+    targetFolder: string,
+    fileType?: string
+  ): Promise<{ path: string; name: string }> {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('targetFolder', targetFolder)
+    if (fileType) {
+      formData.append('fileType', fileType)
+    }
+
+    const response = await fetch(`${API_BASE}/files/${albumId}/${encodeURIComponent(projectName)}/files/upload`, {
+      method: 'POST',
+      body: formData,
+    })
+    return handleResponse(response)
+  },
+
+  async openFile(albumId: string, projectName: string, filePath: string): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE}/files/${albumId}/${encodeURIComponent(projectName)}/files/open`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filePath }),
+    })
+    return handleResponse(response)
+  },
 }
