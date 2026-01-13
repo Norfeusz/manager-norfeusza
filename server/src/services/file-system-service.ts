@@ -1,12 +1,35 @@
 import fs from 'fs-extra'
 import path from 'path'
 import { v4 as uuidv4 } from 'uuid'
-import { Album, Project, FolderStructure } from '../../../shared/src/types'
+import { Album, Project, FolderStructure, AlbumCategory } from '../../../shared/src/types'
 
 const BASE_PATH = 'D:\\DATA\\Norfeusz'
 
+interface AlbumMetadata {
+  category?: AlbumCategory
+  order?: number
+}
+
 export class FileSystemService {
   private albumsPath = BASE_PATH
+
+  // Pomocnicze metody do obsługi metadanych albumu
+  private async getAlbumMetadata(albumName: string): Promise<AlbumMetadata> {
+    const metadataPath = path.join(this.albumsPath, albumName, '.metadata.json')
+    try {
+      if (await fs.pathExists(metadataPath)) {
+        return await fs.readJson(metadataPath)
+      }
+    } catch (error) {
+      console.error(`Error reading metadata for album ${albumName}:`, error)
+    }
+    return {}
+  }
+
+  private async saveAlbumMetadata(albumName: string, metadata: AlbumMetadata): Promise<void> {
+    const metadataPath = path.join(this.albumsPath, albumName, '.metadata.json')
+    await fs.writeJson(metadataPath, metadata, { spaces: 2 })
+  }
 
   async initialize(): Promise<void> {
     // Upewnij się, że główny folder istnieje
@@ -30,12 +53,33 @@ export class FileSystemService {
   async getAlbums(): Promise<Album[]> {
     const items = await fs.readdir(this.albumsPath, { withFileTypes: true })
     const albums: Album[] = []
+    
+    // Foldery do wykluczenia - nie są albumami
+    const excludedFolders = ['Sortownia', 'Bity', 'Teksty', 'Pliki']
 
     for (const item of items) {
-      if (item.isDirectory() && item.name !== 'Sortownia') {
+      if (item.isDirectory() && !excludedFolders.includes(item.name)) {
         const albumPath = path.join(this.albumsPath, item.name)
         const stats = await fs.stat(albumPath)
         const projects = await this.getProjects(item.name)
+        const metadata = await this.getAlbumMetadata(item.name)
+
+        // Sprawdź czy istnieje okładka (JPG, JPEG lub PNG)
+        const coverJpgPath = path.join(albumPath, 'cover.jpg')
+        const coverJpegPath = path.join(albumPath, 'cover.jpeg')
+        const coverPngPath = path.join(albumPath, 'cover.png')
+        const hasJpg = await fs.pathExists(coverJpgPath)
+        const hasJpeg = await fs.pathExists(coverJpegPath)
+        const hasPng = await fs.pathExists(coverPngPath)
+        
+        let coverImage: string | undefined
+        if (hasJpg) {
+          coverImage = `/api/covers/albums/${item.name}/cover.jpg`
+        } else if (hasJpeg) {
+          coverImage = `/api/covers/albums/${item.name}/cover.jpeg`
+        } else if (hasPng) {
+          coverImage = `/api/covers/albums/${item.name}/cover.png`
+        }
 
         albums.push({
           id: item.name,
@@ -43,6 +87,9 @@ export class FileSystemService {
           path: albumPath,
           createdAt: stats.birthtime.toISOString(),
           projectCount: projects.length,
+          coverImage,
+          category: (metadata.category || 'rzezbione') as AlbumCategory,
+          order: metadata.order,
         })
       }
     }
@@ -74,11 +121,67 @@ export class FileSystemService {
     }
   }
 
+  async renameAlbum(oldName: string, newName: string): Promise<void> {
+    const oldPath = path.join(this.albumsPath, oldName)
+    const newPath = path.join(this.albumsPath, newName)
+
+    if (!(await fs.pathExists(oldPath))) {
+      throw new Error(`Album "${oldName}" nie istnieje`)
+    }
+
+    if (await fs.pathExists(newPath)) {
+      throw new Error(`Album "${newName}" już istnieje`)
+    }
+
+    await fs.rename(oldPath, newPath)
+  }
+
+  async updateAlbumCategory(albumName: string, category: AlbumCategory): Promise<void> {
+    const albumPath = path.join(this.albumsPath, albumName)
+
+    if (!(await fs.pathExists(albumPath))) {
+      throw new Error(`Album "${albumName}" nie istnieje`)
+    }
+
+    const metadata = await this.getAlbumMetadata(albumName)
+    metadata.category = category
+    await this.saveAlbumMetadata(albumName, metadata)
+  }
+
+  async updateAlbumOrder(albumName: string, order: number): Promise<void> {
+    const albumPath = path.join(this.albumsPath, albumName)
+
+    if (!(await fs.pathExists(albumPath))) {
+      throw new Error(`Album "${albumName}" nie istnieje`)
+    }
+
+    const metadata = await this.getAlbumMetadata(albumName)
+    metadata.order = order
+    await this.saveAlbumMetadata(albumName, metadata)
+  }
+
   async getProjects(albumId: string): Promise<Project[]> {
     const albumPath = path.join(this.albumsPath, albumId)
 
     if (!(await fs.pathExists(albumPath))) {
       throw new Error(`Album "${albumId}" nie istnieje`)
+    }
+
+    // Sprawdź okładkę albumu (fallback dla projektów)
+    const albumCoverJpgPath = path.join(albumPath, 'cover.jpg')
+    const albumCoverJpegPath = path.join(albumPath, 'cover.jpeg')
+    const albumCoverPngPath = path.join(albumPath, 'cover.png')
+    const albumHasJpg = await fs.pathExists(albumCoverJpgPath)
+    const albumHasJpeg = await fs.pathExists(albumCoverJpegPath)
+    const albumHasPng = await fs.pathExists(albumCoverPngPath)
+    
+    let albumCoverImage: string | undefined
+    if (albumHasJpg) {
+      albumCoverImage = `/api/covers/albums/${albumId}/cover.jpg`
+    } else if (albumHasJpeg) {
+      albumCoverImage = `/api/covers/albums/${albumId}/cover.jpeg`
+    } else if (albumHasPng) {
+      albumCoverImage = `/api/covers/albums/${albumId}/cover.png`
     }
 
     const items = await fs.readdir(albumPath, { withFileTypes: true })
@@ -89,6 +192,32 @@ export class FileSystemService {
         const projectPath = path.join(albumPath, item.name)
         const stats = await fs.stat(projectPath)
 
+        // Sprawdź czy istnieje okładka projektu (JPG, JPEG lub PNG)
+        const coverJpgPath = path.join(projectPath, 'cover.jpg')
+        const coverJpegPath = path.join(projectPath, 'cover.jpeg')
+        const coverPngPath = path.join(projectPath, 'cover.png')
+        const hasJpg = await fs.pathExists(coverJpgPath)
+        const hasJpeg = await fs.pathExists(coverJpegPath)
+        const hasPng = await fs.pathExists(coverPngPath)
+        
+        let coverImage: string | undefined
+        let hasOwnCover = false
+        
+        if (hasJpg) {
+          coverImage = `/api/covers/projects/${albumId}/${encodeURIComponent(item.name)}/cover.jpg`
+          hasOwnCover = true
+        } else if (hasJpeg) {
+          coverImage = `/api/covers/projects/${albumId}/${encodeURIComponent(item.name)}/cover.jpeg`
+          hasOwnCover = true
+        } else if (hasPng) {
+          coverImage = `/api/covers/projects/${albumId}/${encodeURIComponent(item.name)}/cover.png`
+          hasOwnCover = true
+        } else {
+          // Użyj okładki albumu jako fallback
+          coverImage = albumCoverImage
+          hasOwnCover = false
+        }
+
         projects.push({
           id: uuidv4(),
           name: item.name,
@@ -97,6 +226,8 @@ export class FileSystemService {
           createdAt: stats.birthtime.toISOString(),
           updatedAt: stats.mtime.toISOString(),
           structure: this.getProjectStructure(projectPath, item.name),
+          coverImage,
+          hasOwnCover,
         })
       }
     }
@@ -257,6 +388,211 @@ export class FileSystemService {
       updatedAt: stats.mtime.toISOString(),
       structure: this.getProjectStructure(projectPath, projectName),
     }
+  }
+
+  // Zmień nazwę projektu
+  async renameProject(albumId: string, oldProjectName: string, newName: string): Promise<Project> {
+    const oldPath = path.join(this.albumsPath, albumId, oldProjectName)
+    
+    if (!(await fs.pathExists(oldPath))) {
+      throw new Error(`Projekt "${oldProjectName}" nie istnieje`)
+    }
+
+    // Zachowaj numerację jeśli istnieje
+    let finalName = newName
+    const numberMatch = oldProjectName.match(/^(\d{2})\s*-\s*/)
+    if (numberMatch) {
+      const number = numberMatch[1]
+      finalName = `${number} - ${newName}`
+    }
+
+    const newPath = path.join(this.albumsPath, albumId, finalName)
+
+    if (await fs.pathExists(newPath)) {
+      throw new Error(`Projekt "${finalName}" już istnieje w albumie "${albumId}"`)
+    }
+
+    await fs.rename(oldPath, newPath)
+    console.log(`📝 Zmieniono nazwę projektu: ${oldProjectName} -> ${finalName}`)
+
+    return this.getProjectByPath(newPath) as Promise<Project>
+  }
+
+  // Przenieś projekt do innego albumu
+  async moveProjectToAlbum(
+    sourceAlbumId: string,
+    projectName: string,
+    targetAlbumId: string
+  ): Promise<Project> {
+    const sourcePath = path.join(this.albumsPath, sourceAlbumId, projectName)
+    const targetAlbumPath = path.join(this.albumsPath, targetAlbumId)
+
+    if (!(await fs.pathExists(sourcePath))) {
+      throw new Error(`Projekt "${projectName}" nie istnieje`)
+    }
+
+    if (!(await fs.pathExists(targetAlbumPath))) {
+      throw new Error(`Album "${targetAlbumId}" nie istnieje`)
+    }
+
+    const targetPath = path.join(targetAlbumPath, projectName)
+
+    if (await fs.pathExists(targetPath)) {
+      throw new Error(`Projekt "${projectName}" już istnieje w albumie "${targetAlbumId}"`)
+    }
+
+    await fs.move(sourcePath, targetPath)
+    console.log(`📦 Przeniesiono projekt: ${projectName} z "${sourceAlbumId}" do "${targetAlbumId}"`)
+
+    return this.getProjectByPath(targetPath) as Promise<Project>
+  }
+
+  // Usuń projekt (z opcją przeniesienia plików do sortowni)
+  async deleteProject(
+    albumId: string,
+    projectName: string,
+    moveFilesToSortownia: boolean = false
+  ): Promise<void> {
+    const projectPath = path.join(this.albumsPath, albumId, projectName)
+
+    if (!(await fs.pathExists(projectPath))) {
+      throw new Error(`Projekt "${projectName}" nie istnieje`)
+    }
+
+    if (moveFilesToSortownia) {
+      const sortowniaPath = path.join(this.albumsPath, 'Sortownia')
+      await fs.ensureDir(sortowniaPath)
+
+      // Przejdź przez wszystkie podfoldery projektu i przenieś pliki
+      const PROJECT_FOLDERS = [
+        'Projekt FL',
+        'Projekt Reaper',
+        'Tekst',
+        'Demo bit',
+        'Demo nawijka',
+        'Demo utwor',
+        'Gotowe',
+        'Pliki',
+      ]
+
+      for (const folderName of PROJECT_FOLDERS) {
+        const folderPath = path.join(projectPath, folderName)
+        if (await fs.pathExists(folderPath)) {
+          const files = await fs.readdir(folderPath)
+          for (const file of files) {
+            const filePath = path.join(folderPath, file)
+            const stat = await fs.stat(filePath)
+            if (stat.isFile()) {
+              const targetPath = path.join(sortowniaPath, file)
+              
+              // Jeśli plik o takiej nazwie już istnieje w sortowni, dodaj timestamp
+              let finalTargetPath = targetPath
+              if (await fs.pathExists(targetPath)) {
+                const timestamp = Date.now()
+                const ext = path.extname(file)
+                const nameWithoutExt = path.basename(file, ext)
+                finalTargetPath = path.join(sortowniaPath, `${nameWithoutExt}_${timestamp}${ext}`)
+              }
+
+              await fs.move(filePath, finalTargetPath)
+              console.log(`  📄 Przeniesiono do sortowni: ${file}`)
+            }
+          }
+        }
+      }
+
+      console.log(`🗑️ Usunięto projekt "${projectName}" (pliki przeniesione do sortowni)`)
+    } else {
+      console.log(`🗑️ Usunięto projekt "${projectName}" (wszystkie pliki usunięte)`)
+    }
+
+    await fs.remove(projectPath)
+  }
+
+  // Nadaj numer projektowi bez numeracji (z przesuwaniem jeśli trzeba)
+  async assignNumberToProject(
+    albumId: string,
+    projectName: string,
+    number: number
+  ): Promise<Project> {
+    const albumPath = path.join(this.albumsPath, albumId)
+    const oldPath = path.join(albumPath, projectName)
+
+    if (!(await fs.pathExists(oldPath))) {
+      throw new Error(`Projekt "${projectName}" nie istnieje`)
+    }
+
+    // Sprawdź czy projekt już ma numer
+    if (this.extractProjectNumber(projectName) !== null) {
+      throw new Error(`Projekt "${projectName}" już ma numer`)
+    }
+
+    // Jeśli projekt z tym numerem istnieje, przesuń wszystkie kolejne
+    if (await this.projectWithNumberExists(albumId, number)) {
+      await this.shiftProjectNumbers(albumId, number)
+    }
+
+    // Nadaj numer
+    const newName = `${number.toString().padStart(2, '0')} - ${projectName}`
+    const newPath = path.join(albumPath, newName)
+
+    await fs.rename(oldPath, newPath)
+    console.log(`🔢 Nadano numer: ${projectName} -> ${newName}`)
+
+    return this.getProjectByPath(newPath) as Promise<Project>
+  }
+
+  // Masowe przenumerowanie projektów (tryb organizacji)
+  async renumberProjects(
+    albumId: string,
+    renumberingMap: Array<{ projectName: string; newNumber: number }>
+  ): Promise<void> {
+    const albumPath = path.join(this.albumsPath, albumId)
+
+    if (!(await fs.pathExists(albumPath))) {
+      throw new Error(`Album "${albumId}" nie istnieje`)
+    }
+
+    console.log(`🔢 Rozpoczęto przenumerowanie ${renumberingMap.length} projektów w albumie "${albumId}"`)
+
+    // Przejdź przez każdy projekt i zmień jego numer
+    for (const { projectName, newNumber } of renumberingMap) {
+      const oldPath = path.join(albumPath, projectName)
+
+      if (!(await fs.pathExists(oldPath))) {
+        console.warn(`⚠️ Projekt "${projectName}" nie istnieje - pomijam`)
+        continue
+      }
+
+      // Usuń stary numer jeśli istnieje, lub zostaw nazwę bez zmian
+      const nameWithoutNumber = projectName.replace(/^\d{2}\s*-\s*/, '')
+      
+      // Jeśli nameWithoutNumber jest puste (projekt miał tylko numer?), użyj oryginalnej nazwy
+      const baseName = nameWithoutNumber.trim() || projectName
+
+      // Utwórz nową nazwę z nowym numerem
+      const newName = `${newNumber.toString().padStart(2, '0')} - ${baseName}`
+      const newPath = path.join(albumPath, newName)
+
+      // Jeśli nazwa się nie zmieniła, pomiń
+      if (oldPath === newPath) {
+        console.log(`  ✓ ${projectName} - bez zmian`)
+        continue
+      }
+
+      // Jeśli projekt docelowy już istnieje, najpierw przenieś go do tymczasowej nazwy
+      if (await fs.pathExists(newPath)) {
+        const tempName = `_temp_${Date.now()}_${newName}`
+        const tempPath = path.join(albumPath, tempName)
+        await fs.rename(newPath, tempPath)
+        console.log(`  📦 Tymczasowo przeniesiono konfliktowy projekt: ${newName} -> ${tempName}`)
+      }
+
+      await fs.rename(oldPath, newPath)
+      console.log(`  ✓ ${projectName} -> ${newName}`)
+    }
+
+    console.log(`✅ Przenumerowano projekty w albumie "${albumId}"`)
   }
 }
 

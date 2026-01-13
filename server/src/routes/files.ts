@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express'
 import multer from 'multer'
+import path from 'path'
+import fs from 'fs-extra'
 import { fileManagementService } from '../services/file-management-service'
 import { MoveFileRequest, RenameFileRequest, DeleteFileRequest, FolderType } from '../../../shared/src/types'
 
@@ -132,6 +134,64 @@ router.post('/:albumId/:projectName/files/open', async (req: Request, res: Respo
   } catch (error: any) {
     console.error('Error opening file:', error)
     res.status(500).json({ success: false, error: error.message || 'Nie udało się otworzyć pliku' })
+  }
+})
+
+// Szereguj wersje
+router.post('/arrange-versions', async (req: Request, res: Response) => {
+  try {
+    const { albumId, projectName, folderType } = req.body
+
+    if (!albumId || !projectName || !folderType) {
+      return res.status(400).json({ success: false, error: 'Wymagane pola: albumId, projectName, folderType' })
+    }
+
+    const result = await fileManagementService.arrangeVersions(
+      albumId,
+      projectName,
+      folderType
+    )
+
+    res.json({ success: true, data: result })
+  } catch (error: any) {
+    console.error('Error arranging versions:', error)
+    res.status(500).json({ success: false, error: error.message || 'Nie udało się zszeregować wersji' })
+  }
+})
+
+// Pobierz główną okładkę (main-cover)
+router.get('/main-cover', async (req: Request, res: Response) => {
+  try {
+    const basePath = path.resolve('D:/DATA/Norfeusz')
+    const extensions = ['.jpeg', '.jpg', '.png']
+    
+    for (const ext of extensions) {
+      const coverPath = path.join(basePath, `main-cover${ext}`)
+      if (await fs.pathExists(coverPath)) {
+        return res.sendFile(coverPath)
+      }
+    }
+    
+    res.status(404).json({ success: false, error: 'Główna okładka nie została znaleziona' })
+  } catch (error: any) {
+    console.error('Error fetching main cover:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+// Pobierz logo
+router.get('/logo', async (req: Request, res: Response) => {
+  try {
+    const logoPath = path.resolve('D:/DATA/Norfeusz/logo.png')
+    
+    if (await fs.pathExists(logoPath)) {
+      return res.sendFile(logoPath)
+    }
+    
+    res.status(404).json({ success: false, error: 'Logo nie zostało znalezione' })
+  } catch (error: any) {
+    console.error('Error fetching logo:', error)
+    res.status(500).json({ success: false, error: error.message })
   }
 })
 

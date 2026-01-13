@@ -1,8 +1,51 @@
 import { useParams, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 
 export default function ProjectView() {
   const { albumId, projectName } = useParams<{ albumId: string; projectName: string }>()
   const navigate = useNavigate()
+  const [albumCoverUrl, setAlbumCoverUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    const checkAlbumCover = async () => {
+      if (!albumId) return
+      
+      try {
+        console.log('Checking album cover for:', albumId)
+        // Próbujemy załadować okładkę JPG
+        const jpgUrl = `http://localhost:4001/api/covers/albums/${encodeURIComponent(albumId)}/cover.jpg`
+        const jpgResponse = await fetch(jpgUrl)
+        console.log('JPG response status:', jpgResponse.status)
+        if (jpgResponse.ok) {
+          console.log('Setting album cover URL (JPG):', jpgUrl)
+          setAlbumCoverUrl(jpgUrl)
+          return
+        }
+        // Próbujemy JPEG
+        const jpegUrl = `http://localhost:4001/api/covers/albums/${encodeURIComponent(albumId)}/cover.jpeg`
+        const jpegResponse = await fetch(jpegUrl)
+        console.log('JPEG response status:', jpegResponse.status)
+        if (jpegResponse.ok) {
+          console.log('Setting album cover URL (JPEG):', jpegUrl)
+          setAlbumCoverUrl(jpegUrl)
+          return
+        }
+        // Jeśli JPG/JPEG nie istnieje, próbujemy PNG
+        const pngUrl = `http://localhost:4001/api/covers/albums/${encodeURIComponent(albumId)}/cover.png`
+        const pngResponse = await fetch(pngUrl)
+        console.log('PNG response status:', pngResponse.status)
+        if (pngResponse.ok) {
+          console.log('Setting album cover URL (PNG):', pngUrl)
+          setAlbumCoverUrl(pngUrl)
+        } else {
+          console.log('No album cover found')
+        }
+      } catch (error) {
+        console.error('Error checking album cover:', error)
+      }
+    }
+    checkAlbumCover()
+  }, [albumId])
 
   const folders = [
     {
@@ -63,19 +106,43 @@ export default function ProjectView() {
     },
   ]
 
+  console.log('Current albumCoverUrl:', albumCoverUrl)
+
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Tło z okładką albumu */}
+      {albumCoverUrl ? (
+        <>
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: `url("${albumCoverUrl}")`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              filter: 'blur(10px)',
+              transform: 'scale(1.1)',
+              zIndex: 0,
+            }}
+          />
+          <div className="absolute inset-0 bg-black bg-opacity-60" style={{ zIndex: 1 }} />
+        </>
+      ) : (
+        <div className="absolute inset-0 bg-gray-100" style={{ zIndex: 0 }} />
+      )}
+      
+      {/* Zawartość strony */}
+      <div className="relative p-8" style={{ zIndex: 10 }}>
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
           <button
             onClick={() => navigate(`/album/${albumId}`)}
-            className="text-blue-600 hover:text-blue-700 font-semibold"
+            className="text-white hover:text-gray-200 font-semibold bg-black bg-opacity-50 px-4 py-2 rounded-lg transition"
           >
             ← Powrót do albumu
           </button>
         </div>
 
-        <h1 className="text-4xl font-bold text-gray-800 mb-8">
+        <h1 className="text-4xl font-bold text-white drop-shadow-lg mb-8">
           {projectName}
         </h1>
 
@@ -84,14 +151,14 @@ export default function ProjectView() {
             <div
               key={folder.name}
               onClick={() => navigate(`/folder/${albumId}/${projectName}/${encodeURIComponent(folder.name)}`)}
-              className={`${folder.color} rounded-lg shadow-md hover:shadow-xl transition cursor-pointer p-8 border-2 border-transparent hover:${folder.borderColor}`}
+              className="bg-transparent hover:bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer p-8 border-2 border-blue-500"
             >
               <div className="flex flex-col items-center text-center">
-                <div className="text-6xl mb-4">{folder.icon}</div>
-                <h3 className={`text-xl font-bold ${folder.textColor}`}>
+                <div className="text-6xl mb-4 drop-shadow-lg">{folder.icon}</div>
+                <h3 className="text-xl font-bold text-blue-600 drop-shadow-md">
                   {folder.name}
                 </h3>
-                <p className="text-sm text-gray-600 mt-2">
+                <p className="text-sm text-blue-600 drop-shadow-md mt-2">
                   Kliknij aby otworzyć
                 </p>
               </div>
@@ -106,6 +173,7 @@ export default function ProjectView() {
             <p><strong>Projekt:</strong> {projectName}</p>
           </div>
         </div>
+      </div>
       </div>
     </div>
   )

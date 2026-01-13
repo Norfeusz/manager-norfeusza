@@ -4,6 +4,7 @@ import type {
   CreateProjectRequest,
   CreateAlbumRequest,
   ApiResponse,
+  AlbumCategory,
 } from '../../../shared/src/types'
 
 const API_BASE = '/api'
@@ -34,6 +35,33 @@ export const api = {
     return handleResponse<Album>(response)
   },
 
+  async renameAlbum(albumId: string, newName: string): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE}/albums/${encodeURIComponent(albumId)}/rename`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newName }),
+    })
+    return handleResponse(response)
+  },
+
+  async updateAlbumCategory(albumId: string, category: AlbumCategory): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE}/albums/${encodeURIComponent(albumId)}/category`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category }),
+    })
+    return handleResponse(response)
+  },
+
+  async updateAlbumOrder(albumId: string, order: number): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE}/albums/${encodeURIComponent(albumId)}/order`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order }),
+    })
+    return handleResponse(response)
+  },
+
   // Projekty
   async getProjectsByAlbum(albumId: string): Promise<Project[]> {
     const response = await fetch(`${API_BASE}/albums/${albumId}/projects`)
@@ -47,6 +75,91 @@ export const api = {
       body: JSON.stringify(request),
     })
     return handleResponse<Project>(response)
+  },
+
+  async renameProject(albumId: string, projectName: string, newName: string): Promise<Project> {
+    const response = await fetch(`${API_BASE}/projects/${albumId}/${encodeURIComponent(projectName)}/rename`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newName }),
+    })
+    return handleResponse<Project>(response)
+  },
+
+  async moveProject(albumId: string, projectName: string, targetAlbumId: string): Promise<Project> {
+    const response = await fetch(`${API_BASE}/projects/${albumId}/${encodeURIComponent(projectName)}/move`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetAlbumId }),
+    })
+    return handleResponse<Project>(response)
+  },
+
+  async deleteProject(albumId: string, projectName: string, moveFilesToSortownia: boolean): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE}/projects/${albumId}/${encodeURIComponent(projectName)}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ moveFilesToSortownia }),
+    })
+    return handleResponse(response)
+  },
+
+  async assignNumberToProject(albumId: string, projectName: string, number: number): Promise<Project> {
+    const response = await fetch(`${API_BASE}/projects/${albumId}/${encodeURIComponent(projectName)}/assign-number`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ number }),
+    })
+    return handleResponse<Project>(response)
+  },
+
+  async renumberProjects(
+    albumId: string, 
+    renumberingMap: Array<{ projectName: string; newNumber: number }>
+  ): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE}/projects/${albumId}/renumber`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ renumberingMap }),
+    })
+    return handleResponse(response)
+  },
+
+  // Okładki
+  async uploadAlbumCover(albumId: string, file: File): Promise<{ message: string; coverUrl: string }> {
+    const formData = new FormData()
+    formData.append('cover', file)
+
+    const response = await fetch(`${API_BASE}/covers/albums/${albumId}/cover`, {
+      method: 'POST',
+      body: formData,
+    })
+    return handleResponse(response)
+  },
+
+  async uploadProjectCover(albumId: string, projectName: string, file: File): Promise<{ message: string; coverUrl: string }> {
+    const formData = new FormData()
+    formData.append('cover', file)
+
+    const response = await fetch(`${API_BASE}/covers/projects/${albumId}/${encodeURIComponent(projectName)}/cover`, {
+      method: 'POST',
+      body: formData,
+    })
+    return handleResponse(response)
+  },
+
+  async deleteAlbumCover(albumId: string): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE}/covers/albums/${albumId}/cover`, {
+      method: 'DELETE',
+    })
+    return handleResponse(response)
+  },
+
+  async deleteProjectCover(albumId: string, projectName: string): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE}/covers/projects/${albumId}/${encodeURIComponent(projectName)}/cover`, {
+      method: 'DELETE',
+    })
+    return handleResponse(response)
   },
 
   // Health check
@@ -148,12 +261,13 @@ export const api = {
     albumId: string,
     projectName: string,
     targetFolder: string,
-    fileType?: string
+    fileType?: string,
+    customName?: string
   ): Promise<{ newPath: string; newName: string }> {
     const response = await fetch(`${API_BASE}/sortownia/move-to-project`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fileName, albumId, projectName, targetFolder, fileType }),
+      body: JSON.stringify({ fileName, albumId, projectName, targetFolder, fileType, customName }),
     })
     return handleResponse(response)
   },
@@ -175,4 +289,24 @@ export const api = {
     })
     return handleResponse(response)
   },
+
+  async arrangeVersions(
+    albumId: string,
+    projectName: string,
+    folderType: string
+  ): Promise<{ message: string; filesRenamed: number }> {
+    const response = await fetch(`${API_BASE}/files/arrange-versions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ albumId, projectName, folderType }),
+    })
+    return handleResponse(response)
+  },
+
+  // Proste foldery (Bity, Teksty, Pliki, Sortownia)
+  async getSimpleFolderFiles(folderPath: string): Promise<any[]> {
+    const response = await fetch(`${API_BASE}/simple-folders/${encodeURIComponent(folderPath)}/files`)
+    return handleResponse(response)
+  },
 }
+

@@ -198,23 +198,26 @@ export class FileManagementService {
     const files: FileInfo[] = []
 
     for (const item of items) {
-      if (!item.isDirectory()) {
-        const itemPath = path.join(sortowniaPath, item.name)
-        const stats = await fs.stat(itemPath)
+      const itemPath = path.join(sortowniaPath, item.name)
+      const stats = await fs.stat(itemPath)
 
-        files.push({
-          name: item.name,
-          path: itemPath,
-          size: stats.size,
-          extension: path.extname(item.name).toLowerCase(),
-          createdAt: stats.birthtime.toISOString(),
-          modifiedAt: stats.mtime.toISOString(),
-          isDirectory: false,
-        })
-      }
+      files.push({
+        name: item.name,
+        path: itemPath,
+        size: item.isDirectory() ? 0 : stats.size,
+        extension: item.isDirectory() ? '' : path.extname(item.name).toLowerCase(),
+        createdAt: stats.birthtime.toISOString(),
+        modifiedAt: stats.mtime.toISOString(),
+        isDirectory: item.isDirectory(),
+      })
     }
 
-    return files.sort((a, b) => a.name.localeCompare(b.name))
+    // Sortuj: foldery najpierw, potem pliki, alfabetycznie
+    return files.sort((a, b) => {
+      if (a.isDirectory && !b.isDirectory) return -1
+      if (!a.isDirectory && b.isDirectory) return 1
+      return a.name.localeCompare(b.name)
+    })
   }
 
   // SORTOWNIA - Przenieś plik z sortowni do projektu
@@ -223,7 +226,8 @@ export class FileManagementService {
     albumId: string,
     projectName: string,
     targetFolder: FolderType,
-    specificType?: string
+    specificType?: string,
+    customName?: string
   ): Promise<{ newPath: string; newName: string }> {
     const sourcePath = path.join(BASE_PATH, 'Sortownia', fileName)
 
@@ -235,14 +239,27 @@ export class FileManagementService {
     await fs.ensureDir(targetFolderPath)
 
     const extension = path.extname(sourcePath)
-    const existingFiles = (await fs.readdir(targetFolderPath)).filter((f) =>
-      f.endsWith(extension)
-    )
-
-    const fileType = this.getFileTypeByFolder(targetFolder, specificType)
-    const newFileName = this.generateFileName(projectName, fileType, extension, existingFiles)
+    let newFileName: string
+    
+    if (customName) {
+      // Użyj niestandardowej nazwy (dodaj rozszerzenie jeśli nie ma)
+      newFileName = customName.endsWith(extension) ? customName : `${customName}${extension}`
+      
+      // Sprawdź czy plik o takiej nazwie już istnieje
+      const targetPath = path.join(targetFolderPath, newFileName)
+      if (await fs.pathExists(targetPath)) {
+        throw new Error(`Plik o nazwie "${newFileName}" już istnieje w tym folderze`)
+      }
+    } else {
+      // Automatyczna numeracja
+      const existingFiles = (await fs.readdir(targetFolderPath)).filter((f) =>
+        f.endsWith(extension)
+      )
+      const fileType = this.getFileTypeByFolder(targetFolder, specificType)
+      newFileName = this.generateFileName(projectName, fileType, extension, existingFiles)
+    }
+    
     const newPath = path.join(targetFolderPath, newFileName)
-
     await fs.move(sourcePath, newPath, { overwrite: false })
 
     return { newPath, newName: newFileName }
@@ -269,6 +286,107 @@ export class FileManagementService {
     await fs.move(file.path, finalPath)
 
     return { path: finalPath, name: path.basename(finalPath) }
+  }
+
+  // SZEREGOWANIE WERSJI - sortuj pliki według daty i przenumeruj
+  async arrangeVersions(
+    albumId: string,
+    projectName: string,
+    folderType: string
+  ): Promise<{ message: string; filesRenamed: number }> {
+    const folderPath = path.join(BASE_PATH, albumId, projectName, folderType)
+
+    if (!(await fs.pathExists(folderPath))) {
+      throw new Error('Folder nie istnieje')
+    }
+
+    // Pobierz wszystkie pliki
+    const items = await fs.readdir(folderPath, { withFileTypes: true })
+    const allFiles = await Promise.all(
+      items
+        .filter(item => !item.isDirectory())
+        .map(async (item) => {
+          const itemPath = path.join(folderPath, item.name)
+          const stats = await fs.stat(itemPath)
+          return {
+            name: item.name,
+            path: itemPath,
+            modifiedAt: stats.mtime.getTime(),
+            extension: path.extname(item.name).toLowerCase()
+          }
+        })
+    )
+
+    // Regex do wykrywania plików zgodnych z konwencją: nazwa-typ-001.ext
+    const conventionPattern = /^[a-z0-9_]+-[a-z0-9_]+-\d{3}\./i
+    
+    // Filtruj tylko pliki zgodne z konwencją
+    const files = allFiles.filter(file => conventionPattern.test(file.name))
+
+    if (files.length === 0) {
+      throw new Error('Brak plików zgodnych z konwencją do zszeregowania')
+    }
+
+    // Sortuj według daty modyfikacji (od najstarszej do najnowszej)
+    files.sort((a, b) => a.modifiedAt - b.modifiedAt)
+
+    // Grupuj pliki według rozszerzenia
+    const filesByExtension = new Map<string, typeof files>()
+    files.forEach(file => {
+      const ext = file.extension
+      if (!filesByExtension.has(ext)) {
+        filesByExtension.set(ext, [])
+      }
+      filesByExtension.get(ext)!.push(file)
+    })
+
+    // Określ typ pliku na podstawie folderu
+    const fileType = this.getFileTypeByFolder(folderType as FolderType)
+
+    let filesRenamed = 0
+    const tempRenames: Array<{ from: string; to: string }> = []
+
+    // Dla każdego rozszerzenia numeruj zgodnie z konwencją
+    for (const [ext, extFiles] of filesByExtension) {
+      for (let i = 0; i < extFiles.length; i++) {
+        const file = extFiles[i]
+        
+        // Generuj nową nazwę używając konwencji projektu
+        const normalizedProjectName = projectName
+          .toLowerCase()
+          .replace(/\s+/g, '_')
+          .replace(/[^a-z0-9_]/g, '')
+        
+        const versionNumber = (i + 1).toString().padStart(3, '0')
+        const newName = `${normalizedProjectName}-${fileType}-${versionNumber}${ext}`
+        const newPath = path.join(folderPath, newName)
+
+        // Jeśli nazwa się nie zmienia, pomiń
+        if (file.path === newPath) continue
+
+        // Użyj tymczasowej nazwy dla bezpieczeństwa
+        const tempName = `temp_${Date.now()}_${i}${ext}`
+        const tempPath = path.join(folderPath, tempName)
+        
+        tempRenames.push({ from: file.path, to: tempPath })
+        tempRenames.push({ from: tempPath, to: newPath })
+      }
+    }
+
+    // Wykonaj wszystkie zmiany nazw
+    for (const rename of tempRenames) {
+      if (await fs.pathExists(rename.from)) {
+        await fs.move(rename.from, rename.to, { overwrite: true })
+        filesRenamed++
+      }
+    }
+
+    const skippedFiles = allFiles.length - files.length
+
+    return {
+      message: `Pomyślnie zszeregowano ${Math.floor(filesRenamed / 2)} plików${skippedFiles > 0 ? `, pominięto ${skippedFiles} plików z niestandardowymi nazwami` : ''}`,
+      filesRenamed: Math.floor(filesRenamed / 2)
+    }
   }
 }
 

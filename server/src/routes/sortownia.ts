@@ -42,7 +42,7 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
 // Przenieś plik z sortowni do projektu
 router.post('/move-to-project', async (req: Request, res: Response) => {
   try {
-    const { fileName, albumId, projectName, targetFolder, fileType } = req.body
+    const { fileName, albumId, projectName, targetFolder, fileType, customName } = req.body
 
     if (!fileName || !albumId || !projectName || !targetFolder) {
       return res.status(400).json({
@@ -56,7 +56,8 @@ router.post('/move-to-project', async (req: Request, res: Response) => {
       albumId,
       projectName,
       targetFolder as FolderType,
-      fileType
+      fileType,
+      customName
     )
 
     res.json({ success: true, data: result })

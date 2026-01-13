@@ -45,9 +45,12 @@ Manager Norfa/
 │   │   ├── main.tsx                # Entry point
 │   │   ├── index.css               # Style globalne
 │   │   ├── components/             # Komponenty React
-│   │   │   ├── AlbumGrid.tsx      # ✅ Kafelki albumów (strona główna)
+│   │   │   ├── AlbumGrid.tsx      # ✅ Kafelki albumów (strona główna) + drag&drop
 │   │   │   ├── ProjectList.tsx    # ✅ Lista projektów w albumie
-│   │   │   └── ProjectView.tsx    # ✅ Widok projektu (8 kafelków)
+│   │   │   ├── ProjectView.tsx    # ✅ Widok projektu (8 kafelków)
+│   │   │   ├── FolderView.tsx     # ✅ Widok folderu z plikami
+│   │   │   ├── Sortownia.tsx      # ✅ Sortownia - pliki oczekujące
+│   │   │   └── SimpleFolderView.tsx # ✅ Przeglądarka folderów (Bity/Teksty/Pliki)
 │   │   └── services/               # Serwisy API
 │   │       └── api.ts              # ✅ Komunikacja z backendem
 │   ├── index.html
@@ -60,9 +63,14 @@ Manager Norfa/
 │   │   ├── index.ts                # ✅ Entry point + routing
 │   │   ├── routes/                 # Endpointy API
 │   │   │   ├── albums.ts           # ✅ API dla albumów
-│   │   │   └── projects.ts         # ✅ API dla projektów
+│   │   │   ├── projects.ts         # ✅ API dla projektów
+│   │   │   ├── files.ts            # ✅ API dla plików + covery + logo
+│   │   │   ├── covers.ts           # ✅ API dla okładek
+│   │   │   ├── sortownia.ts        # ✅ API dla sortowni
+│   │   │   └── simple-folders.ts   # ✅ API dla prostych folderów
 │   │   └── services/               # Logika biznesowa
-│   │       └── file-system-service.ts  # ✅ Zarządzanie folderami
+│   │       ├── file-system-service.ts  # ✅ Zarządzanie folderami
+│   │       └── file-management-service.ts  # ✅ Operacje na plikach
 │   ├── tsconfig.json
 │   └── package.json
 │
@@ -104,84 +112,172 @@ album/
 
 ## Główne Funkcjonalności
 
-### 1. Tworzenie Nowego Projektu
+### 1. Strona Główna - Organizacja Albumów
+
+- **Trzy sekcje**: Gotowe, Rzeźbione, Pliki
+- **Drag & Drop**: Przeciąganie albumów między sekcjami i zmiana kolejności
+- **Kategoryzacja**: Albumy z kategorią "gotowe" vs reszta (rzeźbione)
+- **Tło**: main-cover.jpeg jako tło z efektem blur (10px)
+- **Logo**: logo.png jako nagłówek strony
+- **Tryb organizacji**: Przycisk "Organizuj" do aktywacji drag & drop
+- **Okładki albumów**: Obsługa cover.jpg, cover.jpeg, cover.png
+- **Licznik projektów**: Wyświetlanie ilości projektów w każdym albumie
+
+### 2. Sekcja Pliki
+
+Cztery podfoldery z bezpośrednim dostępem:
+
+- **Bity** (folder: `Norfeusz/Bity/`)
+- **Teksty** (folder: `Norfeusz/Teksty/`)
+- **Pliki** (folder: `Norfeusz/Pliki/`)
+- **Sortownia** (folder: `Norfeusz/Sortownia/`)
+
+Funkcje:
+
+- Przeglądanie zawartości z nawigacją do podfolderów
+- Breadcrumbs pokazujące aktualną ścieżkę
+- Przycisk powrotu do katalogu nadrzędnego
+- Ikona 📁 dla folderów
+- Wyświetlanie rozmiaru i daty modyfikacji plików
+
+### 3. Sortownia - Miejsce Tymczasowe
+
+- **Upload plików**: Drag & drop lub wybór plików
+- **Przeglądanie**: Lista plików z previewem
+- **Przypisywanie**: Przenoszenie plików do projektów
+- **Multi-select**: Zaznaczanie wielu plików naraz
+- **Nawigacja w podfolderach**: Pełna obsługa zagnieżdżonych folderów
+- **Bulk operations**: Usuwanie/przypisywanie wielu plików jednocześnie
+
+### 4. Tworzenie Nowego Projektu
 
 - Podanie nazwy projektu (utworu)
+- Opcjonalna numeracja (automatyczna lub ręczna)
 - Automatyczne utworzenie struktury folderów
 - Domyślne umieszczenie w albumie "Robocze"
 - Generowanie metadanych projektu
 
-### 2. Zarządzanie Strukturą Folderów
+### 5. Zarządzanie Strukturą Folderów
 
 - UI do nawigacji po strukturze projektu
 - Tworzenie nowych projektów FL Studio/Reaper
 - Organizacja plików w odpowiednich podfolderach
 - Intuicyjne przenoszenie plików między folderami
+- Zmiana nazw plików z zachowaniem wersjonowania
 
-### 3. Praca z Plikami Audio
+### 6. Praca z Plikami Audio
 
 - Automatyczne rozpoznawanie renderów z FL/Reaper
 - Organizacja plików audio (wav, mp3, flac)
 - Wersjonowanie plików
-- Możliwość ręcznego przenoszenia plików
+- Upload przez drag & drop
+- Otwieranie plików w systemie
+- Usuwanie plików
 
-### 4. Zarządzanie Tekstami
+### 7. Zarządzanie Okładkami
 
-- Tworzenie i edycja tekstów utworów
-- Wersjonowanie tekstów
-- Export tekstów do różnych formatów
+- **Upload okładek**: Dla albumów i projektów
+- **Obsługa formatów**: .jpg, .jpeg, .png
+- **Automatyczne wykrywanie**: Priorytet .jpg → .jpeg → .png
+- **Tło**: Okładki albumów jako tło z efektem blur (10px)
+- **Fallback**: Okładka albumu jako tło projektów bez własnej okładki
+- **Usuwanie**: Opcja usunięcia okładki
 
-### 5. Przenoszenie Między Albumami
+### 8. Zarządzanie Projektami
 
-- UI do przenoszenia projektów między albumami
-- Zachowanie struktury podczas przenoszenia
-- Historia zmian
-
-### 6. System Backupów
-
-- Porównanie zawartości lokalnej z Google Drive
-- Automatyczne wykrywanie zmian
-- Synchronizacja jednym kliknięciem
-- Nadpisywanie zmienionych plików
-- Log operacji backupu
+- **Zmiana nazwy**: Opcja z zachowaniem struktury
+- **Przenoszenie**: Między albumami z wyborem co zrobić z plikami
+- **Numeracja**: Przypisywanie/zmiana numeru projektu
+- **Usuwanie**: Z opcją przeniesienia plików do sortowni
+- **Tryb organizacji**: Zmiana kolejności projektów w albumie
 
 ## API Endpointy (Zaimplementowane)
-
-### Projekty
-
-- ✅ `POST /api/projects` - tworzenie nowego projektu
-  - Request body: `{ name: string, albumId?: string }`
-  - Automatyczne tworzenie struktury 8 folderów
-  - Domyślny album: "Robocze"
-  - Response: obiekt Project z pełną strukturą
 
 ### Albumy
 
 - ✅ `GET /api/albums` - lista wszystkich albumów
-  - Response: tablica obiektów Album z licznikiem projektów
-  - Sortowanie: "Robocze" zawsze pierwszy
+  - Response: tablica obiektów Album z licznikiem projektów i kategorią
+  - Wykluczone foldery: Sortownia, Bity, Teksty, Pliki
 - ✅ `GET /api/albums/:id/projects` - projekty w albumie
   - Response: tablica obiektów Project
 - ✅ `POST /api/albums` - tworzenie nowego albumu
   - Request body: `{ name: string }`
+- ✅ `PUT /api/albums/:albumId` - zmiana nazwy albumu
+  - Request body: `{ newName: string }`
+- ✅ `DELETE /api/albums/:albumId` - usunięcie albumu
+  - Query params: `?keepFiles=true/false`
+- ✅ `PUT /api/albums/:albumId/category` - zmiana kategorii albumu
+  - Request body: `{ category: 'gotowe' | 'rzezbione' }`
+
+### Projekty
+
+- ✅ `POST /api/projects` - tworzenie nowego projektu
+  - Request body: `{ name: string, albumId?: string, useNumbering?: boolean, numberingMode?: 'auto'|'manual', manualNumber?: string }`
+  - Automatyczne tworzenie struktury 8 folderów
+  - Domyślny album: "Robocze"
+  - Response: obiekt Project z pełną strukturą
+- ✅ `GET /api/projects/:albumId` - lista projektów w albumie
+- ✅ `PUT /api/projects/:albumId/:projectName` - zmiana nazwy projektu
+  - Request body: `{ newName: string }`
+- ✅ `DELETE /api/projects/:albumId/:projectName` - usunięcie projektu
+  - Request body: `{ moveFilesToSortownia: boolean }`
+- ✅ `PUT /api/projects/:albumId/:projectName/move` - przeniesienie projektu
+  - Request body: `{ targetAlbumId: string, moveFiles: boolean }`
+- ✅ `PUT /api/projects/:albumId/:projectName/number` - przypisanie/zmiana numeru
+  - Request body: `{ number: string }`
+
+### Pliki
+
+- ✅ `GET /api/files/:albumId/:projectName/files/:folderType` - pliki w folderze
+  - folderType: 'Projekt FL' | 'Projekt Reaper' | 'Tekst' | etc.
+- ✅ `POST /api/files/:albumId/:projectName/files/move` - przenoszenie pliku
+  - Request body: `{ sourcePath: string, targetFolder: string, fileType?: string }`
+- ✅ `PUT /api/files/:albumId/:projectName/files/rename` - zmiana nazwy pliku
+  - Request body: `{ oldPath: string, newName: string }`
+- ✅ `DELETE /api/files/:albumId/:projectName/files` - usunięcie pliku
+  - Request body: `{ filePath: string }`
+- ✅ `POST /api/files/:albumId/:projectName/files/upload` - upload pliku
+  - multipart/form-data z polem `file` i `folderType`
+- ✅ `POST /api/files/:albumId/:projectName/files/open` - otwarcie pliku w systemie
+  - Request body: `{ filePath: string }`
+- ✅ `GET /api/files/main-cover` - pobranie main-cover.jpeg
+- ✅ `GET /api/files/logo` - pobranie logo.png
+
+### Okładki (Covers)
+
+- ✅ `POST /api/covers/albums/:albumId/upload` - upload okładki albumu
+  - multipart/form-data z polem `cover`
+  - Obsługa: .jpg, .jpeg, .png
+- ✅ `POST /api/covers/projects/:albumId/:projectName/upload` - upload okładki projektu
+- ✅ `GET /api/covers/albums/:albumId/cover.:ext` - pobranie okładki albumu
+  - ext: jpg, jpeg, png
+- ✅ `GET /api/covers/projects/:albumId/:projectName/cover.:ext` - pobranie okładki projektu
+- ✅ `DELETE /api/covers/albums/:albumId/cover` - usunięcie okładki albumu
+- ✅ `DELETE /api/covers/projects/:albumId/:projectName/cover` - usunięcie okładki projektu
+
+### Sortownia
+
+- ✅ `GET /api/sortownia/files` - lista plików w sortowni
+- ✅ `POST /api/sortownia/upload` - upload pliku do sortowni
+  - multipart/form-data z polem `file`
+- ✅ `DELETE /api/sortownia/files` - usunięcie pliku z sortowni
+  - Request body: `{ filePath: string }`
+- ✅ `POST /api/sortownia/assign` - przypisanie pliku do projektu
+  - Request body: `{ fileName: string, albumId: string, projectName: string, targetFolder: string, fileType?: string, customFileName?: string }`
+- ✅ `POST /api/sortownia/open` - otwarcie pliku w systemie
+  - Request body: `{ filePath: string }`
+
+### Proste Foldery (SimpleFolders)
+
+- ✅ `GET /api/simple-folders/:folderPath/files` - zawartość folderu
+  - folderPath: relatywna ścieżka od D:/DATA/Norfeusz
+  - Obsługa zagnieżdżonych folderów (np. "Sortownia/subfolder")
+  - Response: lista plików i folderów z metadanymi
 
 ### Health Check
 
 - ✅ `GET /api/health` - status API
   - Response: `{ status: "ok", message: string }`
-
-### Pliki (Do Implementacji w Fazie 2)
-
-- `GET /api/projects/:id/files` - pliki projektu
-- `POST /api/projects/:id/files/move` - przenoszenie plików
-- `GET /api/projects/:id/structure` - struktura folderów projektu
-
-### Backup (Do Implementacji w Fazie 4)
-
-- `GET /api/backup/status` - status backupu
-- `POST /api/backup/compare` - porównanie lokalne vs Google Drive
-- `POST /api/backup/sync` - synchronizacja
-- `GET /api/backup/history` - historia backupów
 
 ## Typy Danych (Zaimplementowane)
 
@@ -344,7 +440,7 @@ npm start
 
 ## Stan Projektu
 
-### ✅ Faza 1: Podstawy (UKOŃCZONA)
+### ✅ Faza 1: Podstawy (UKOŃCZONA - 11 stycznia 2026)
 
 1. ✅ Widok albumów (kafelki)
 2. ✅ Widok utworów w albumie (lista)
@@ -353,43 +449,69 @@ npm start
 5. ✅ Backend API + File System Service
 6. ✅ Routing i nawigacja
 
-### 📋 Faza 2: Zarządzanie Plikami (Następna)
+### ✅ Faza 2: Zarządzanie Plikami (UKOŃCZONA - 14 stycznia 2026)
 
-1. Przeglądanie zawartości podfolderów
-2. System wersjonowania nazw
-3. Przenoszenie plików między folderami
-4. Zmiana nazw (z zachowaniem konwencji)
-5. Upload plików (drag & drop)
+1. ✅ Przeglądanie zawartości podfolderów
+2. ✅ System wersjonowania nazw
+3. ✅ Przenoszenie plików między folderami
+4. ✅ Zmiana nazw (z zachowaniem konwencji)
+5. ✅ Upload plików (drag & drop)
+6. ✅ Otwieranie plików w systemie
+7. ✅ Usuwanie plików
+8. ✅ Sortownia - miejsce tymczasowe na pliki
+9. ✅ Upload do sortowni
+10. ✅ Przypisywanie plików z sortowni do projektów
+11. ✅ Multi-select w sortowni
+12. ✅ Nawigacja w podfolderach sortowni
 
-### 📋 Faza 3: Multimedia
+### ✅ Faza 3: Organizacja i UI (UKOŃCZONA - 14 stycznia 2026)
 
-6. Odtwarzacz audio (demo/gotowe)
-7. Edytor tekstów
-8. Integracja z Windows Media Player
+1. ✅ Drag & drop organizacja albumów
+2. ✅ Kategorie albumów (Gotowe/Rzeźbione)
+3. ✅ Zmiana kolejności albumów
+4. ✅ Sekcja "Pliki" z 4 podfolderami
+5. ✅ Przeglądanie folderów z breadcrumbs
+6. ✅ Okładki albumów i projektów (.jpg, .jpeg, .png)
+7. ✅ Tło z okładką + blur effect
+8. ✅ Logo na stronie głównej
+9. ✅ Numeracja projektów (auto/manual)
+10. ✅ Przenoszenie projektów między albumami
+11. ✅ Zmiana nazw albumów i projektów
+12. ✅ Usuwanie z opcją przeniesienia do sortowni
 
-### 📋 Faza 4: Zaawansowane
+### 📋 Faza 4: Multimedia i Teksty (Następna)
 
-9. Import tekstów z Android backup
-10. Automatyzacja FL Studio / Reaper (badanie możliwości)
-11. System backupów (Google Drive)
-12. Przenoszenie projektów między albumami
+1. Odtwarzacz audio wbudowany (demo/gotowe)
+2. Edytor tekstów online
+3. Preview plików graficznych
+4. Wersjonowanie zaawansowane
 
-## Konwencja Nazewnictwa (Do Implementacji w Fazie 2)
+### 📋 Faza 5: Zaawansowane
 
-**Format**: `nazwa_utworu-typ-kategoria-wersja`
+1. Import tekstów z Android backup
+2. Automatyzacja FL Studio / Reaper (badanie możliwości)
+3. System backupów (Google Drive)
+4. Historia zmian w projektach
+5. Statystyki projektów
 
-Przykłady:
+## Konwencja Nazewnictwa
 
-- `moj_utwor-projekt_bit-001.flp`
-- `moj_utwor-projekt_nawijka-002.rpp`
-- `moj_utwor-tekst-003.txt`
-- `moj_utwor-bit_demo-001.wav`
-- `moj_utwor-nawijka_demo-002.mp3`
-- `moj_utwor-utwor_demo-001.mp3`
-- `moj_utwor-bit_gotowy-001.mp3`
-- `moj_utwor-gotowy-001.mp3`
+**Format**: Dowolny, z opcjonalną numeracją
 
-**Wersjonowanie**: Automatyczny increment (001 → 002 → 003...)
+Przykłady z numeracją:
+
+- `01 - Mój Utwór`
+- `02 - Kolejny Track`
+- `03 - Demo Beat`
+
+Pliki wewnątrz projektu:
+
+- Obsługa wszystkich formatów audio (wav, mp3, flac, ogg)
+- Obsługa projektów DAW (flp, rpp)
+- Pliki tekstowe (txt, docx, pdf)
+- Automatyczne sortowanie po dacie modyfikacji
+
+**Wersjonowanie**: Przez system plików (daty modyfikacji)
 
 ## Uwagi Techniczne
 
@@ -398,10 +520,16 @@ Przykłady:
 - Proxy w Vite przekierowuje `/api` na backend
 - Backend działa na porcie **4001**, frontend na **5175**
 - Manager Norfa używa innych portów niż Manager Plików (4001/5175 vs 5001/3001)
-- File System Service automatycznie inicjalizuje album "Robocze"
+- File System Service automatycznie wyklucza foldery systemowe
 - Wszystkie operacje na plikach przez fs-extra
-- UUID dla ID projektów (generowane runtime)
+- Obsługa formatów okładek: .jpg, .jpeg, .png (priorytet w tej kolejności)
+- Blur effect na tłach: 10px dla optymalnej czytelności
+- Drag & Drop oparte na HTML5 Drag API
+- UUID dla ID w przypadku potrzeby unikalnych identyfikatorów
 - ID albumów = nazwa folderu
+- Kategorie albumów przechowywane w .metadata.json
+- Logo i main-cover serwowane przez dedykowane endpointy
+- Sortownia wspiera pełną nawigację w podfolderach
 
 ## Zależności
 
@@ -424,4 +552,4 @@ Przy wątpliwościach zawsze pytaj kierownika projektu przed implementacją.
 
 ---
 
-**Ostatnia aktualizacja**: 11 stycznia 2026 - Ukończono Fazę 1
+**Ostatnia aktualizacja**: 14 stycznia 2026 - Ukończono Fazę 3 (Organizacja i UI)

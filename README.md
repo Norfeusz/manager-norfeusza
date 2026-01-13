@@ -5,14 +5,22 @@ Zaawansowane narzędzie webowe do zarządzania projektami muzycznymi i procesem 
 ## 🎯 Funkcjonalności
 
 ### ✅ Faza 1: Podstawy (Ukończona)
+
 - Zarządzanie albumami muzycznymi
+- **Okładki albumów i projektów** - upload JPG/PNG, wyświetlanie na kafelkach i liście
 - Tworzenie projektów (utworów) z automatyczną strukturą folderów
 - **Numeracja projektów (01, 02, 03...) z trybem automatycznym i ręcznym**
 - **Automatyczne przesuwanie numerów przy ręcznym nadawaniu**
+- **Tryb "Organizuj" - zmiana kolejności projektów z przenumerowaniem**
+- **Nadawanie numerów projektom bez numeracji (opcja w menu projektu)**
+- **Zmiana nazwy projektów z zachowaniem numeracji**
+- **Przenoszenie projektów między albumami**
+- **Usuwanie projektów z opcją przeniesienia plików do sortowni**
 - Nawigacja: Albumy → Projekty → Podfoldery
 - Automatyczna inicjalizacja albumu "Robocze"
 
 ### ✅ Faza 2: Zarządzanie Plikami (Ukończona)
+
 - **Sortownia** - tymczasowy folder dla plików przed przypisaniem do projektu
 - Przeglądanie plików w 8 podfolderach każdego projektu
 - Upload plików z automatycznym nazewnictwem
@@ -22,14 +30,15 @@ Zaawansowane narzędzie webowe do zarządzania projektami muzycznymi i procesem 
 - Otwieranie plików w systemie Windows
 
 ### 📋 Faza 3: Multimedia (W planach)
+
 - Odtwarzacz audio w przeglądarce
 - Edytor tekstów
 - Integracja z Windows Media Player
 
 ### 📋 Faza 4: Zaawansowane (W planach)
+
 - Import tekstów z backupu Android
 - Backup do Google Drive
-- Przenoszenie projektów między albumami
 - Badanie automatyzacji FL Studio / Reaper
 
 ## 🚀 Szybki Start
@@ -37,10 +46,12 @@ Zaawansowane narzędzie webowe do zarządzania projektami muzycznymi i procesem 
 ### Metoda 1: Launcher (Najłatwiejsza)
 
 Podwójne kliknięcie na jeden z plików:
+
 - **`start.bat`** - uruchomienie przez CMD (zalecane)
 - **`start.ps1`** - uruchomienie przez PowerShell
 
 Launcher automatycznie:
+
 - Sprawdzi i zainstaluje zależności
 - Uruchomi backend (port 4001)
 - Uruchomi frontend (port 5175)
@@ -49,6 +60,7 @@ Launcher automatycznie:
 ### Metoda 2: Ręczne uruchomienie
 
 #### Backend
+
 ```bash
 cd server
 npm install
@@ -56,6 +68,7 @@ npm run dev
 ```
 
 #### Frontend (w nowym terminalu)
+
 ```bash
 cd client
 npm install
@@ -104,6 +117,7 @@ Każdy projekt (utwór) zawiera 8 podfolderów:
 Format: `nazwa_utworu-typ-wersja.ext`
 
 Przykłady:
+
 - `moj_utwor-projekt_bit-001.flp`
 - `moj_utwor-bit_demo-002.wav`
 - `moj_utwor-nawijka_gotowy-001.mp3`
@@ -119,6 +133,7 @@ Przykłady:
 ## 📖 Dokumentacja
 
 Szczegółowa dokumentacja w folderze `dokumentacja/`:
+
 - `dokumentacja-techniczna.md` - API, typy, struktura
 - `briefing-dla-agenta.md` - wymagania projektu
 - `Opis projektu.txt` - szczegóły funkcjonalności

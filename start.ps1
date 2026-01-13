@@ -25,7 +25,8 @@ if (-not (Test-Path "server\node_modules")) {
     Set-Location server
     npm install
     Set-Location ..
-} else {
+}
+else {
     Write-Host "[2/4] Zależności backendu OK" -ForegroundColor Green
 }
 
@@ -35,7 +36,8 @@ if (-not (Test-Path "client\node_modules")) {
     Set-Location client
     npm install
     Set-Location ..
-} else {
+}
+else {
     Write-Host "[3/4] Zależności frontendu OK" -ForegroundColor Green
 }
 

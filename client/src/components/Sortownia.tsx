@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../services/api'
 
 interface FileInfo {
@@ -23,6 +23,7 @@ interface Project {
 
 export default function Sortownia() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [files, setFiles] = useState<FileInfo[]>([])
   const [albums, setAlbums] = useState<Album[]>([])
   const [loading, setLoading] = useState(true)
@@ -34,10 +35,21 @@ export default function Sortownia() {
   const [selectedProject, setSelectedProject] = useState<string>('')
   const [selectedFolder, setSelectedFolder] = useState<string>('')
   const [selectedType, setSelectedType] = useState<string>('')
+  
+  // Multi-select
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set())
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false)
+  
+  // Nazewnictwo plików
+  const [namingMode, setNamingMode] = useState<'auto' | 'custom'>('auto')
+  const [customFileName, setCustomFileName] = useState('')
+  
+  // Podfoldery
+  const subPath = searchParams.get('path') || ''
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [subPath])
 
   useEffect(() => {
     if (selectedAlbum) {
@@ -48,8 +60,9 @@ export default function Sortownia() {
   async function loadData() {
     try {
       setLoading(true)
+      const folderPath = subPath ? `Sortownia/${subPath}` : 'Sortownia'
       const [filesData, albumsData] = await Promise.all([
-        api.getSortowniaFiles(),
+        api.getSimpleFolderFiles(folderPath),
         api.getAlbums(),
       ])
       setFiles(filesData)
@@ -58,6 +71,25 @@ export default function Sortownia() {
       alert(`Błąd: ${err.message}`)
     } finally {
       setLoading(false)
+    }
+  }
+
+  function handleFolderClick(folderName: string) {
+    const newSubPath = subPath ? `${subPath}/${folderName}` : folderName
+    setSearchParams({ path: newSubPath })
+  }
+
+  function handleGoBack() {
+    if (subPath) {
+      const parts = subPath.split('/')
+      parts.pop()
+      if (parts.length > 0) {
+        setSearchParams({ path: parts.join('/') })
+      } else {
+        setSearchParams({})
+      }
+    } else {
+      navigate('/')
     }
   }
 
@@ -115,6 +147,8 @@ export default function Sortownia() {
     setSelectedProject('')
     setSelectedFolder('')
     setSelectedType('')
+    setNamingMode('auto')
+    setCustomFileName('')
     setShowMoveModal(true)
   }
 
@@ -129,15 +163,40 @@ export default function Sortownia() {
       alert('Wybierz typ pliku')
       return
     }
+    
+    if (namingMode === 'custom' && !customFileName.trim()) {
+      alert('Wpisz niestandardową nazwę pliku')
+      return
+    }
 
     try {
-      await api.moveFromSortownia(
-        selectedFile.name,
-        selectedAlbum,
-        selectedProject,
-        selectedFolder,
-        selectedType || undefined
-      )
+      // Jeśli zaznaczono wiele plików, przenieś wszystkie
+      if (selectedFiles.size > 0) {
+        const filesToMove = files.filter(f => selectedFiles.has(f.path))
+        for (const file of filesToMove) {
+          await api.moveFromSortownia(
+            file.name,
+            selectedAlbum,
+            selectedProject,
+            selectedFolder,
+            selectedType || undefined,
+            namingMode === 'custom' ? customFileName.trim() : undefined
+          )
+        }
+        setSelectedFiles(new Set())
+        setIsMultiSelectMode(false)
+      } else {
+        // Pojedynczy plik
+        await api.moveFromSortownia(
+          selectedFile.name,
+          selectedAlbum,
+          selectedProject,
+          selectedFolder,
+          selectedType || undefined,
+          namingMode === 'custom' ? customFileName.trim() : undefined
+        )
+      }
+      
       setShowMoveModal(false)
       setSelectedFile(null)
       loadData()
@@ -150,6 +209,57 @@ export default function Sortownia() {
     if (bytes < 1024) return `${bytes} B`
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+  }
+
+  function toggleFileSelection(filePath: string) {
+    const newSelected = new Set(selectedFiles)
+    if (newSelected.has(filePath)) {
+      newSelected.delete(filePath)
+    } else {
+      newSelected.add(filePath)
+    }
+    setSelectedFiles(newSelected)
+  }
+
+  function selectAllFiles() {
+    setSelectedFiles(new Set(files.map(f => f.path)))
+  }
+
+  function deselectAllFiles() {
+    setSelectedFiles(new Set())
+  }
+
+  function toggleMultiSelectMode() {
+    setIsMultiSelectMode(!isMultiSelectMode)
+    if (isMultiSelectMode) {
+      setSelectedFiles(new Set())
+    }
+  }
+
+  async function handleDeleteSelected() {
+    if (selectedFiles.size === 0) return
+    if (!confirm(`Czy na pewno usunąć ${selectedFiles.size} plików?`)) return
+
+    try {
+      for (const filePath of selectedFiles) {
+        await api.deleteSortowniaFile(filePath)
+      }
+      setSelectedFiles(new Set())
+      setIsMultiSelectMode(false)
+      loadData()
+    } catch (err: any) {
+      alert(`Błąd: ${err.message}`)
+    }
+  }
+
+  function openMoveModalForSelected() {
+    if (selectedFiles.size === 0) return
+    // Ustaw pierwszy plik jako reprezentacyjny dla modalnego
+    const firstFile = files.find(f => selectedFiles.has(f.path))
+    if (firstFile) {
+      setSelectedFile(firstFile)
+      setShowMoveModal(true)
+    }
   }
 
   if (loading) {
@@ -180,11 +290,14 @@ export default function Sortownia() {
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
           <button
-            onClick={() => navigate('/')}
+            onClick={handleGoBack}
             className="text-blue-600 hover:text-blue-700 font-semibold"
           >
-            ← Powrót do albumów
+            ← Powrót
           </button>
+          <span className="text-gray-600">
+            Sortownia{subPath && <span> / {subPath}</span>}
+          </span>
         </div>
 
         <div className="flex justify-between items-center mb-8">
@@ -194,7 +307,33 @@ export default function Sortownia() {
               Miejsce na pliki oczekujące na przypisanie do projektów
             </p>
           </div>
-          <div>
+          <div className="flex gap-3">
+            {isMultiSelectMode && selectedFiles.size > 0 && (
+              <>
+                <button
+                  onClick={openMoveModalForSelected}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition"
+                >
+                  📎 Przypisz zaznaczone ({selectedFiles.size})
+                </button>
+                <button
+                  onClick={handleDeleteSelected}
+                  className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold transition"
+                >
+                  🗑️ Usuń zaznaczone ({selectedFiles.size})
+                </button>
+              </>
+            )}
+            <button
+              onClick={toggleMultiSelectMode}
+              className={`px-6 py-3 rounded-lg font-semibold transition ${
+                isMultiSelectMode 
+                  ? 'bg-gray-300 hover:bg-gray-400 text-gray-800'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
+            >
+              {isMultiSelectMode ? 'Anuluj zaznaczanie' : '☑️ Zaznacz wiele'}
+            </button>
             <label className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition cursor-pointer">
               {uploading ? 'Przesyłanie...' : '+ Dodaj Pliki'}
               <input
@@ -215,48 +354,93 @@ export default function Sortownia() {
               <p className="mt-2">Dodaj pliki, aby później przypisać je do projektów</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-200">
+            <>
+              {isMultiSelectMode && (
+                <div className="p-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                  <span className="text-sm text-gray-600">
+                    Zaznaczono: {selectedFiles.size} / {files.length}
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={selectAllFiles}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      Zaznacz wszystkie
+                    </button>
+                    <span className="text-gray-400">|</span>
+                    <button
+                      onClick={deselectAllFiles}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      Odznacz wszystkie
+                    </button>
+                  </div>
+                </div>
+              )}
+              <div className="divide-y divide-gray-200">
               {files.map((file) => (
                 <div
                   key={file.path}
-                  className="p-6 hover:bg-gray-50 transition flex items-center justify-between"
+                  className={`p-6 transition flex items-center justify-between ${
+                    selectedFiles.has(file.path) ? 'bg-blue-50' : file.isDirectory ? 'hover:bg-blue-50 cursor-pointer' : 'hover:bg-gray-50'
+                  }`}
+                  onClick={() => {
+                    if (file.isDirectory) {
+                      handleFolderClick(file.name)
+                    }
+                  }}
                 >
                   <div className="flex items-center gap-4 flex-1">
-                    <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                      <span className="text-orange-600 font-bold text-xs">
-                        {file.extension.replace('.', '').toUpperCase()}
-                      </span>
+                    {isMultiSelectMode && !file.isDirectory && (
+                      <input
+                        type="checkbox"
+                        checked={selectedFiles.has(file.path)}
+                        onChange={() => toggleFileSelection(file.path)}
+                        className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                      />
+                    )}
+                    <div className={`w-12 h-12 ${file.isDirectory ? 'bg-blue-100' : 'bg-orange-100'} rounded-lg flex items-center justify-center`}>
+                      {file.isDirectory ? (
+                        <span className="text-2xl">📁</span>
+                      ) : (
+                        <span className="text-orange-600 font-bold text-xs">
+                          {(file.extension || '').replace('.', '').toUpperCase()}
+                        </span>
+                      )}
                     </div>
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold text-gray-800">{file.name}</h3>
                       <p className="text-sm text-gray-600">
-                        {formatFileSize(file.size)} • {new Date(file.modifiedAt).toLocaleString('pl-PL')}
+                        {file.isDirectory ? 'Folder' : `${formatFileSize(file.size)} • ${new Date(file.modifiedAt).toLocaleString('pl-PL')}`}
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleOpenFile(file)}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition"
-                    >
-                      Otwórz
-                    </button>
-                    <button
-                      onClick={() => openMoveModal(file)}
-                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm transition"
-                    >
-                      Przypisz do projektu
-                    </button>
-                    <button
-                      onClick={() => handleDeleteFile(file)}
-                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm transition"
-                    >
-                      Usuń
-                    </button>
-                  </div>
+                  {!isMultiSelectMode && !file.isDirectory && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleOpenFile(file)}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition"
+                      >
+                        Otwórz
+                      </button>
+                      <button
+                        onClick={() => openMoveModal(file)}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm transition"
+                      >
+                        Przypisz do projektu
+                      </button>
+                      <button
+                        onClick={() => handleDeleteFile(file)}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm transition"
+                      >
+                        Usuń
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
+            </>
           )}
         </div>
       </div>
@@ -267,7 +451,11 @@ export default function Sortownia() {
           <div className="bg-white rounded-lg p-8 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4">Przypisz plik do projektu</h2>
             <p className="text-gray-600 mb-4">
-              Plik: <strong>{selectedFile.name}</strong>
+              {selectedFiles.size > 0 ? (
+                <span>Plików do przeniesienia: <strong>{selectedFiles.size}</strong></span>
+              ) : (
+                <span>Plik: <strong>{selectedFile.name}</strong></span>
+              )}
             </p>
 
             <label className="block mb-2 font-semibold">Album:</label>
@@ -333,6 +521,57 @@ export default function Sortownia() {
                   <option value="nawijka">Nawijka</option>
                   <option value="utwor">Utwór</option>
                 </select>
+              </>
+            )}
+            
+            {selectedFolder && (
+              <>
+                <label className="block mb-4 font-semibold">Nazewnictwo pliku:</label>
+                <div className="space-y-3 mb-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="namingMode"
+                      value="auto"
+                      checked={namingMode === 'auto'}
+                      onChange={(e) => setNamingMode(e.target.value as 'auto' | 'custom')}
+                      className="w-4 h-4 text-purple-600"
+                    />
+                    <div>
+                      <span className="font-medium text-gray-800">Automatyczna nazwa</span>
+                      <p className="text-sm text-gray-600">Numeracja 001, 002, 003...</p>
+                    </div>
+                  </label>
+                  
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="namingMode"
+                      value="custom"
+                      checked={namingMode === 'custom'}
+                      onChange={(e) => setNamingMode(e.target.value as 'auto' | 'custom')}
+                      className="w-4 h-4 text-purple-600"
+                    />
+                    <div>
+                      <span className="font-medium text-gray-800">Niestandardowa nazwa</span>
+                      <p className="text-sm text-gray-600">Wpisz własną nazwę pliku</p>
+                    </div>
+                  </label>
+                </div>
+                
+                {namingMode === 'custom' && (
+                  <>
+                    <label className="block mb-2 font-semibold">Nazwa pliku:</label>
+                    <input
+                      type="text"
+                      value={customFileName}
+                      onChange={(e) => setCustomFileName(e.target.value)}
+                      placeholder="Wpisz nazwę (bez rozszerzenia)"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      autoFocus
+                    />
+                  </>
+                )}
               </>
             )}
 

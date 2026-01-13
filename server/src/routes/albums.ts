@@ -44,4 +44,58 @@ router.post('/', async (req: Request, res: Response) => {
   }
 })
 
+// Zmień nazwę albumu
+router.put('/:albumId/rename', async (req: Request, res: Response) => {
+  try {
+    const { albumId } = req.params
+    const { newName } = req.body
+
+    if (!newName || newName.trim() === '') {
+      return res.status(400).json({ success: false, error: 'Nowa nazwa albumu jest wymagana' })
+    }
+
+    await fileSystemService.renameAlbum(albumId, newName.trim())
+    res.json({ success: true, data: { message: 'Nazwa albumu została zmieniona' } })
+  } catch (error: any) {
+    console.error('Error renaming album:', error)
+    res.status(500).json({ success: false, error: error.message || 'Nie udało się zmienić nazwy albumu' })
+  }
+})
+
+// Aktualizuj kategorię albumu
+router.put('/:albumId/category', async (req: Request, res: Response) => {
+  try {
+    const { albumId } = req.params
+    const { category } = req.body
+
+    if (!category || (category !== 'gotowe' && category !== 'rzezbione')) {
+      return res.status(400).json({ success: false, error: 'Nieprawidłowa kategoria' })
+    }
+
+    await fileSystemService.updateAlbumCategory(albumId, category)
+    res.json({ success: true, data: { message: 'Kategoria albumu została zaktualizowana' } })
+  } catch (error: any) {
+    console.error('Error updating album category:', error)
+    res.status(500).json({ success: false, error: error.message || 'Nie udało się zaktualizować kategorii' })
+  }
+})
+
+// Aktualizuj kolejność albumu
+router.put('/:albumId/order', async (req: Request, res: Response) => {
+  try {
+    const { albumId } = req.params
+    const { order } = req.body
+
+    if (typeof order !== 'number') {
+      return res.status(400).json({ success: false, error: 'Kolejność musi być liczbą' })
+    }
+
+    await fileSystemService.updateAlbumOrder(albumId, order)
+    res.json({ success: true, data: { message: 'Kolejność albumu została zaktualizowana' } })
+  } catch (error: any) {
+    console.error('Error updating album order:', error)
+    res.status(500).json({ success: false, error: error.message || 'Nie udało się zaktualizować kolejności' })
+  }
+})
+
 export default router

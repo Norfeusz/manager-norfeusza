@@ -1,11 +1,16 @@
 // Shared TypeScript types for Manager Norfa
 
+export type AlbumCategory = 'gotowe' | 'rzezbione'
+
 export interface Album {
   id: string;
   name: string;
   path: string;
   createdAt: string;
   projectCount?: number;
+  coverImage?: string;
+  category?: AlbumCategory; // kategoria albumu (domyślnie 'rzezbione')
+  order?: number; // kolejność w ramach kategorii
 }
 
 export interface Project {
@@ -16,6 +21,8 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   structure: FolderStructure;
+  coverImage?: string;
+  hasOwnCover?: boolean; // true jeśli projekt ma własną okładkę, false jeśli dziedziczy z albumu
 }
 
 export interface FolderStructure {
@@ -70,6 +77,18 @@ export interface RenameFileRequest {
 
 export interface DeleteFileRequest {
   filePath: string;
+}
+
+export interface RenameProjectRequest {
+  newName: string;
+}
+
+export interface MoveProjectRequest {
+  targetAlbumId: string;
+}
+
+export interface DeleteProjectRequest {
+  moveFilesToSortownia: boolean;
 }
 
 export type FolderType = 'Projekt FL' | 'Projekt Reaper' | 'Tekst' | 'Demo bit' | 'Demo nawijka' | 'Demo utwor' | 'Gotowe' | 'Pliki';
