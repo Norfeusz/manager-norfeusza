@@ -176,6 +176,23 @@ export const api = {
     return handleResponse<any[]>(response)
   },
 
+  async getAllProjectFiles(albumId: string, projectName: string): Promise<any[]> {
+    const response = await fetch(
+      `${API_BASE}/files/${albumId}/${encodeURIComponent(projectName)}/all-files`
+    )
+    return handleResponse<any[]>(response)
+  },
+
+  async getAllAlbumFiles(albumId: string): Promise<any[]> {
+    const response = await fetch(`${API_BASE}/files/album/${albumId}/all-files`)
+    return handleResponse<any[]>(response)
+  },
+
+  async getAllFiles(): Promise<any[]> {
+    const response = await fetch(`${API_BASE}/files/all-files`)
+    return handleResponse<any[]>(response)
+  },
+
   async moveFile(
     albumId: string,
     projectName: string,
@@ -306,6 +323,25 @@ export const api = {
   // Proste foldery (Bity, Teksty, Pliki, Sortownia)
   async getSimpleFolderFiles(folderPath: string): Promise<any[]> {
     const response = await fetch(`${API_BASE}/simple-folders/${encodeURIComponent(folderPath)}/files`)
+    return handleResponse(response)
+  },
+
+  // Archiwum ZIP
+  async listZipArchives(): Promise<any[]> {
+    const response = await fetch(`${API_BASE}/files/zip-archive/list`)
+    return handleResponse(response)
+  },
+
+  async addFilesToZip(
+    filePaths: string[],
+    zipName: string,
+    createNew: boolean
+  ): Promise<{ zipPath: string; filesAdded: number }> {
+    const response = await fetch(`${API_BASE}/files/zip-archive/add`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filePaths, zipName, createNew }),
+    })
     return handleResponse(response)
   },
 }

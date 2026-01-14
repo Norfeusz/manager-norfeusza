@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Project, Album } from '../../../shared/src/types'
 import { api } from '../services/api'
+import AllFilesModal from './AllFilesModal'
 
 export default function ProjectList() {
   const { albumId } = useParams<{ albumId: string }>()
@@ -37,6 +38,11 @@ export default function ProjectList() {
   // Zmiana nazwy albumu
   const [showRenameAlbumModal, setShowRenameAlbumModal] = useState(false)
   const [renameAlbumValue, setRenameAlbumValue] = useState('')
+  
+  // Wszystkie pliki w albumie
+  const [showAllFilesModal, setShowAllFilesModal] = useState(false)
+  const [allFiles, setAllFiles] = useState<any[]>([])
+  const [loadingFiles, setLoadingFiles] = useState(false)
 
   useEffect(() => {
     if (albumId) {
@@ -141,6 +147,20 @@ export default function ProjectList() {
     setSelectedProject(project)
     setMoveFilesToSortownia(true)
     setShowDeleteModal(true)
+  }
+
+  async function loadAllFiles() {
+    if (!albumId) return
+    try {
+      setLoadingFiles(true)
+      const files = await api.getAllAlbumFiles(albumId)
+      setAllFiles(files)
+      setShowAllFilesModal(true)
+    } catch (error: any) {
+      alert(`Błąd: ${error.message}`)
+    } finally {
+      setLoadingFiles(false)
+    }
   }
 
   async function handleRenameProject() {
@@ -375,6 +395,13 @@ export default function ProjectList() {
           <div className="flex gap-3">
             {!organizingMode ? (
               <>
+                <button
+                  onClick={loadAllFiles}
+                  disabled={loadingFiles}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-semibold transition disabled:opacity-50"
+                >
+                  {loadingFiles ? 'Ładowanie...' : '📋 Wszystkie pliki'}
+                </button>
                 <button
                   onClick={startOrganizing}
                   disabled={projects.length === 0}
@@ -976,6 +1003,15 @@ export default function ProjectList() {
           </div>
         </div>
       )}
+
+      {/* Modal wszystkich plików */}
+      <AllFilesModal
+        show={showAllFilesModal}
+        onClose={() => setShowAllFilesModal(false)}
+        files={allFiles}
+        title={`Wszystkie pliki w albumie "${albumId}"`}
+        level="album"
+      />
       </div>
     </div>
   )

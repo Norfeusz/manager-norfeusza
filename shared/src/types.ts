@@ -62,6 +62,9 @@ export interface FileInfo {
   createdAt: string;
   modifiedAt: string;
   isDirectory: boolean;
+  folderType?: FolderType; // opcjonalne - z którego folderu pochodzi plik
+  projectName?: string; // opcjonalne - z którego projektu pochodzi plik
+  albumId?: string; // opcjonalne - z którego albumu pochodzi plik
 }
 
 export interface MoveFileRequest {

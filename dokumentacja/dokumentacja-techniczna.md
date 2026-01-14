@@ -49,6 +49,7 @@ Manager Norfa/
 │   │   │   ├── ProjectList.tsx    # ✅ Lista projektów w albumie
 │   │   │   ├── ProjectView.tsx    # ✅ Widok projektu (8 kafelków)
 │   │   │   ├── FolderView.tsx     # ✅ Widok folderu z plikami
+│   │   │   ├── AllFilesModal.tsx  # ✅ Modal wszystkich plików (wielokrotnego użytku)
 │   │   │   ├── Sortownia.tsx      # ✅ Sortownia - pliki oczekujące
 │   │   │   └── SimpleFolderView.tsx # ✅ Przeglądarka folderów (Bity/Teksty/Pliki)
 │   │   └── services/               # Serwisy API
@@ -539,6 +540,8 @@ Pliki wewnątrz projektu:
 - fs-extra - operacje na plikach
 - uuid - generowanie ID
 - tsx - TypeScript execution
+- multer - obsługa uploadów
+- adm-zip - tworzenie i modyfikacja archiwów ZIP
 
 ### Frontend
 
@@ -546,10 +549,63 @@ Pliki wewnątrz projektu:
 - Vite - build tool
 - Tailwind CSS - stylowanie
 
+## Funkcje ZIP Składu
+
+System umożliwia pakowanie plików do archiwów ZIP przechowyywanych w `D:\DATA\Norfeusz\Pliki\ZIP Skład`:
+
+### Możliwości
+
+- **Tworzenie nowego archiwum** - użytkownik podaje nazwę, system tworzy plik .zip
+- **Dodawanie do istniejącego archiwum** - wybór z listy istniejących archiwów ZIP
+- **Multi-select** - zaznaczanie wielu plików jednocześnie
+- **Pakowanie z różnych poziomów**:
+  - Wszystkie pliki w projekcie
+  - Wszystkie pliki w albumie
+  - Wszystkie pliki w całym systemie
+
+### Implementacja
+
+- Backend: `adm-zip` - czytanie i modyfikacja archiwów
+- Endpointy:
+  - `GET /api/files/zip-archive/list` - lista archiwów
+  - `POST /api/files/zip-archive/add` - dodawanie plików
+- Frontend: komponent `AllFilesModal` z integracją ZIP
+
+## Funkcja "Wszystkie Pliki"
+
+System pozwala na przeglądanie wszystkich plików na różnych poziomach hierarchii:
+
+### Poziomy dostępu
+
+1. **Projekt** - wszystkie pliki z 8 folderów projektu
+2. **Album** - wszystkie pliki ze wszystkich projektów w albumie
+3. **System** - wszystkie pliki ze wszystkich albumów i projektów
+
+### Funkcjonalność
+
+- **Sortowanie** wielopoziomowe:
+  - Po albumie (tylko poziom "System")
+  - Po projekcie (poziom "Album" i "System")
+  - Po folderze (wszystkie poziomy)
+  - Po dacie modyfikacji
+  - Po rozmiarze pliku
+- **Multi-select** - zaznaczanie wielu plików
+- **Pakowanie do ZIP** - bezpośrednio z modala
+- **Nawigacja** - przycisk "Otwórz folder" prowadzi do lokalizacji pliku
+
+### Implementacja
+
+- Backend endpointy:
+  - `GET /api/files/:albumId/:projectName/all-files` - pliki w projekcie
+  - `GET /api/files/album/:albumId/all-files` - pliki w albumie
+  - `GET /api/files/all-files` - wszystkie pliki
+- Komponent wielokrotnego użytku: `AllFilesModal.tsx`
+- Przyciski dostępne w: `AlbumGrid`, `ProjectList`, `ProjectView`
+
 ## Kontakt z Kierownikiem
 
 Przy wątpliwościach zawsze pytaj kierownika projektu przed implementacją.
 
 ---
 
-**Ostatnia aktualizacja**: 14 stycznia 2026 - Ukończono Fazę 3 (Organizacja i UI)
+**Ostatnia aktualizacja**: 14 stycznia 2026 - Dodano funkcje ZIP Składu i "Wszystkie Pliki"

@@ -33,6 +33,49 @@ router.get('/:albumId/:projectName/files/:folderType', async (req: Request, res:
   }
 })
 
+// Pobierz wszystkie pliki w projekcie
+router.get('/:albumId/:projectName/all-files', async (req: Request, res: Response) => {
+  try {
+    const { albumId, projectName } = req.params
+
+    const allFiles = await fileManagementService.getAllProjectFiles(
+      albumId,
+      decodeURIComponent(projectName)
+    )
+
+    res.json({ success: true, data: allFiles })
+  } catch (error: any) {
+    console.error('Error fetching all project files:', error)
+    res.status(500).json({ success: false, error: error.message || 'Nie udało się pobrać plików' })
+  }
+})
+
+// Pobierz wszystkie pliki w albumie
+router.get('/album/:albumId/all-files', async (req: Request, res: Response) => {
+  try {
+    const { albumId } = req.params
+
+    const allFiles = await fileManagementService.getAllAlbumFiles(albumId)
+
+    res.json({ success: true, data: allFiles })
+  } catch (error: any) {
+    console.error('Error fetching all album files:', error)
+    res.status(500).json({ success: false, error: error.message || 'Nie udało się pobrać plików' })
+  }
+})
+
+// Pobierz wszystkie pliki we wszystkich albumach
+router.get('/all-files', async (req: Request, res: Response) => {
+  try {
+    const allFiles = await fileManagementService.getAllFiles()
+
+    res.json({ success: true, data: allFiles })
+  } catch (error: any) {
+    console.error('Error fetching all files:', error)
+    res.status(500).json({ success: false, error: error.message || 'Nie udało się pobrać plików' })
+  }
+})
+
 // Przenieś plik
 router.post('/:albumId/:projectName/files/move', async (req: Request, res: Response) => {
   try {
@@ -192,6 +235,38 @@ router.get('/logo', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Error fetching logo:', error)
     res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+// Pobierz listę plików ZIP w folderze ZIP Skład
+router.get('/zip-archive/list', async (req: Request, res: Response) => {
+  try {
+    const zipFiles = await fileManagementService.listZipArchives()
+    res.json({ success: true, data: zipFiles })
+  } catch (error: any) {
+    console.error('Error listing ZIP archives:', error)
+    res.status(500).json({ success: false, error: error.message || 'Nie udało się pobrać listy archiwów' })
+  }
+})
+
+// Dodaj pliki do archiwum ZIP
+router.post('/zip-archive/add', async (req: Request, res: Response) => {
+  try {
+    const { filePaths, zipName, createNew } = req.body
+
+    if (!filePaths || !Array.isArray(filePaths) || filePaths.length === 0) {
+      return res.status(400).json({ success: false, error: 'Wymagana lista plików do zapakowania' })
+    }
+
+    if (!zipName) {
+      return res.status(400).json({ success: false, error: 'Wymagana nazwa archiwum' })
+    }
+
+    const result = await fileManagementService.addFilesToZipArchive(filePaths, zipName, createNew)
+    res.json({ success: true, data: result })
+  } catch (error: any) {
+    console.error('Error adding files to ZIP:', error)
+    res.status(500).json({ success: false, error: error.message || 'Nie udało się dodać plików do archiwum' })
   }
 })
 

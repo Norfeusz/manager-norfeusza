@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Album } from '../../../shared/src/types'
 import { api } from '../services/api'
+import AllFilesModal from './AllFilesModal'
 
 export default function AlbumGrid() {
   const [albums, setAlbums] = useState<Album[]>([])
@@ -15,6 +16,9 @@ export default function AlbumGrid() {
   const [dragOverSection, setDragOverSection] = useState<'gotowe' | 'rzezbione' | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [mainCoverUrl, setMainCoverUrl] = useState<string | null>(null)
+  const [showAllFilesModal, setShowAllFilesModal] = useState(false)
+  const [allFiles, setAllFiles] = useState<any[]>([])
+  const [loadingFiles, setLoadingFiles] = useState(false)
   const navigate = useNavigate()
 
   // Filtrowanie albumów
@@ -56,6 +60,19 @@ export default function AlbumGrid() {
       setError(err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function loadAllFiles() {
+    try {
+      setLoadingFiles(true)
+      const files = await api.getAllFiles()
+      setAllFiles(files)
+      setShowAllFilesModal(true)
+    } catch (error: any) {
+      alert(`Błąd: ${error.message}`)
+    } finally {
+      setLoadingFiles(false)
     }
   }
 
@@ -224,6 +241,13 @@ export default function AlbumGrid() {
               </>
             ) : (
               <>
+                <button
+                  onClick={loadAllFiles}
+                  disabled={loadingFiles}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-semibold transition disabled:opacity-50"
+                >
+                  {loadingFiles ? 'Ładowanie...' : '📋 Wszystkie pliki'}
+                </button>
                 <button
                   onClick={() => setOrganizingMode(true)}
                   className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition"
@@ -490,6 +514,15 @@ export default function AlbumGrid() {
           </div>
         </div>
       )}
+
+      {/* Modal wszystkich plików */}
+      <AllFilesModal
+        show={showAllFilesModal}
+        onClose={() => setShowAllFilesModal(false)}
+        files={allFiles}
+        title="Wszystkie pliki w systemie"
+        level="all"
+      />
       </div>
     </div>
   )
