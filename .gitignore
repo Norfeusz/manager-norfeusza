@@ -6,3 +6,7 @@ dist
 .DS_Store
 coverage
 .vscode
+.venv
+__pycache__
+*.pyc
+.temp_unpacked

@@ -51,6 +51,9 @@ export default function TextManager() {
   const [newSubfolderName, setNewSubfolderName] = useState('')
   const [movingToFolder, setMovingToFolder] = useState(false)
 
+  // Unpack texts
+  const [unpacking, setUnpacking] = useState(false)
+
   useEffect(() => {
     loadFiles()
   }, [currentPath])
@@ -372,6 +375,30 @@ export default function TextManager() {
     return new Date(dateString).toLocaleString('pl-PL')
   }
 
+  async function handleUnpackTexts() {
+    if (!confirm('Czy na pewno chcesz wypakować teksty z backupu FastNotepad?\n\nProces może zająć kilka minut.')) {
+      return
+    }
+
+    try {
+      setUnpacking(true)
+      const result = await api.unpackTexts()
+      
+      const stats = result.stats
+      const message = `✅ Teksty rozpakowane i zorganizowane!\n\n` +
+        `⏭️  Pominiętych (100% zgodność): ${stats.skipped}\n` +
+        `📝 Dodanych jako wersje (30-99%): ${stats.addedAsVersion}\n` +
+        `✨ Dodanych jako nowe (0-29%): ${stats.addedAsNew}`
+      
+      alert(message)
+      loadFiles() // Odśwież listę plików
+    } catch (error: any) {
+      alert(`❌ Błąd: ${error.message}`)
+    } finally {
+      setUnpacking(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -439,6 +466,16 @@ export default function TextManager() {
               >
                 📁 Utwórz podfolder
               </button>
+              {!currentPath && (
+                <button
+                  onClick={handleUnpackTexts}
+                  disabled={unpacking}
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition disabled:opacity-50"
+                  title="Wypakuj teksty z backupu FastNotepad"
+                >
+                  {unpacking ? '⏳ Rozpakowywanie...' : '📦 Wypakuj teksty'}
+                </button>
+              )}
               <button
                 onClick={() => {
                   setMultiSelectMode(!multiSelectMode)

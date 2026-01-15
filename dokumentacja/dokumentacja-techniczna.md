@@ -51,6 +51,7 @@ Manager Norfa/
 │   │   │   ├── FolderView.tsx     # ✅ Widok folderu z plikami
 │   │   │   ├── AllFilesModal.tsx  # ✅ Modal wszystkich plików (wielokrotnego użytku)
 │   │   │   ├── Sortownia.tsx      # ✅ Sortownia - pliki oczekujące
+│   │   │   ├── TextManager.tsx    # ✅ Zarządzanie tekstami + wypakowanie FastNotepad
 │   │   │   └── SimpleFolderView.tsx # ✅ Przeglądarka folderów (Bity/Teksty/Pliki)
 │   │   └── services/               # Serwisy API
 │   │       └── api.ts              # ✅ Komunikacja z backendem
@@ -66,11 +67,16 @@ Manager Norfa/
 │   │   │   ├── albums.ts           # ✅ API dla albumów
 │   │   │   ├── projects.ts         # ✅ API dla projektów
 │   │   │   ├── files.ts            # ✅ API dla plików + covery + logo
+│   │   │   ├── text-manager.ts     # ✅ API dla zarządzania tekstami + wypakowanie
 │   │   │   ├── covers.ts           # ✅ API dla okładek
 │   │   │   ├── sortownia.ts        # ✅ API dla sortowni
 │   │   │   └── simple-folders.ts   # ✅ API dla prostych folderów
 │   │   └── services/               # Logika biznesowa
 │   │       ├── file-system-service.ts  # ✅ Zarządzanie folderami
+│   │       └── file-management-service.ts  # ✅ Operacje na plikach
+│   ├── scripts/                    # Skrypty Python
+│   │   ├── rozpakuj_fastnotepad.py # ✅ Parser kopii zapasowej FastNotepad
+│   │   └── organize_texts.py       # ✅ Inteligentna organizacja tekstów
 │   │       └── file-management-service.ts  # ✅ Operacje na plikach
 │   ├── tsconfig.json
 │   └── package.json
@@ -81,7 +87,8 @@ Manager Norfa/
 │       └── types.ts                # ✅ Wspólne typy TypeScript
 │
 ├── dokumentacja/                    # Dokumentacja
-│   ├── briefing-dla-agenta.md
+│   .venv/                          # Środowisko Python (wypakowanie tekstów)
+├── ├── briefing-dla-agenta.md
 │   ├── dokumentacja-techniczna.md
 │   └── Opis projektu.txt
 │
@@ -197,12 +204,14 @@ Funkcje:
 System zarządzania tekstami w folderze `D:\DATA\Norfeusz\Teksty\` z pełną funkcjonalnością:
 
 #### Funkcje podstawowe:
+
 - **Nawigacja breadcrumb**: Przeglądanie hierarchii folderów z kliknięciem w ścieżkę
 - **Multi-select**: Zaznaczanie wielu plików jednocześnie (checkbox UI)
 - **Operacje pojedyncze**: Przyciski akcji dla każdego pliku
 - **Double-click**: Otwieranie plików w Notepad
 
 #### Operacje na plikach:
+
 - **Otwórz** - podwójne kliknięcie otwiera plik w Notepad (Windows)
 - **Zmień nazwę** - zmiana nazwy pliku .txt
 - **Usuń** - usunięcie zaznaczonych plików
@@ -211,39 +220,99 @@ System zarządzania tekstami w folderze `D:\DATA\Norfeusz\Teksty\` z pełną fun
 - **Przenieś do folderu** - organizacja między podfolderami
 
 #### Przypisywanie do projektu:
+
 - **Tryb "Istniejący projekt"**:
   - Wybór albumu z listy
   - Wybór projektu z wybranego albumu
   - Automatyczne ładowanie listy projektów
-  
 - **Tryb "Utwórz nowy projekt"**:
   - Pole do wpisania nazwy projektu
   - Utworzenie projektu w albumie "Robocze"
   - Przeniesienie pliku do nowo utworzonego projektu
 
 #### Przenoszenie między folderami:
+
 - **Tryb "Istniejący folder"**:
   - Lista folderów z głównego katalogu Teksty
   - Lista podfolderów z bieżącego katalogu
   - Opcja przeniesienia do głównego folderu Teksty
-  
 - **Tryb "Utwórz nowy podfolder"**:
   - Pole do wpisania nazwy folderu
   - Automatyczne utworzenie folderu w bieżącej lokalizacji
   - Przeniesienie plików do nowo utworzonego folderu
 
 #### Automatyczne nazewnictwo plików:
+
 - Format: `{nazwa_projektu}-tekst-{001}.txt`
 - **Transliteracja polskich znaków**: ą→a, ć→c, ę→e, ł→l, ń→n, ó→o, ś→s, ź→z, ż→z
 - **Sekwencyjne numerowanie**: 001, 002, 003...
 - Przykład: "Sto tysięcy" → `sto_tysiecy-tekst-001.txt`
 
 #### UI/UX:
+
 - Ikony dla plików i folderów (📄 .txt, 📁 folder)
 - Breadcrumb z emoji 🏠 dla głównego folderu
 - Tryby modalne z przyciskami wyboru (📁 Istniejący / ✨ Utwórz nowy)
 - Podgląd docelowej ścieżki przed przeniesieniem
 - Walidacja: disabled buttons gdy brak wymaganych danych
+
+### Funkcja "Wypakuj teksty" (FastNotepad Backup)
+
+System umożliwia inteligentne rozpakowywanie i organizację tekstów z kopii zapasowej aplikacji FastNotepad (Android).
+
+#### Workflow:
+
+1. **Wypakowanie** - ekstrakcja plików .txt z formatu FastNotepad (hash#JSON+notes)
+2. **Analiza podobieństwa** - porównanie z istniejącymi tekstami w projektach
+3. **Inteligentna organizacja**:
+   - **100% podobieństwa** → pomijamy (duplikat)
+   - **40-99% podobieństwa** → dodajemy jako wersję do projektu
+   - **0-39% podobieństwa** → dodajemy do `wyodrebnione_teksty/`
+
+#### Algorytm podobieństwa:
+
+- **Biblioteka**: `difflib.SequenceMatcher.ratio()`
+- **Normalizacja**: lowercase + usunięcie nadmiarowych spacji
+- **Próg wersjonowania**: 40% - teksty rapowe o podobnej strukturze
+- **Porównanie**: ze wszystkimi tekstami w folderach `{album}/{projekt}/Tekst/` oraz `Teksty/`
+
+#### Nazewnictwo wersji:
+
+- Rozpoznawanie istniejącego numeru: `armia-tekst-001.txt`
+- Inkrementacja numeru: `armia-tekst-002.txt`, `armia-tekst-003.txt`
+- Unikanie kolizji: automatyczne szukanie następnego wolnego numeru
+
+#### Implementacja:
+
+**Backend**:
+- `server/scripts/rozpakuj_fastnotepad.py` - parser kopii zapasowej FastNotepad
+- `server/scripts/organize_texts.py` - inteligentna organizacja z similarity matching
+- `server/src/routes/text-manager.ts` - endpoint `POST /text-manager/unpack-texts`
+
+**Frontend**:
+- Przycisk "📦 Wypakuj teksty" w głównym folderze Teksty
+- Potwierdzenie przed rozpoczęciem
+- Wyświetlanie statystyk po zakończeniu
+
+**Python Dependencies**:
+- Python 3.13+
+- Środowisko wirtualne: `.venv/` w katalogu projektu
+- Moduły: pathlib, difflib, json (built-in)
+
+#### Statystyki:
+
+Po zakończeniu wyświetlane są:
+- Liczba pominiętych duplikatów (100%)
+- Liczba dodanych wersji (40-99%)
+- Liczba nowych tekstów (0-39%)
+- Lista plików, którym dodano nowe wersje
+
+#### UI:
+
+- Przycisk widoczny tylko w głównym folderze `Teksty/`
+- Alert z potwierdzeniem przed rozpoczęciem
+- Feedback z pełnymi statystykami
+- Automatyczne odświeżenie listy plików
 
 ## API Endpointy (Zaimplementowane)
 
@@ -333,36 +402,28 @@ System zarządzania tekstami w folderze `D:\DATA\Norfeusz\Teksty\` z pełną fun
 - ✅ `GET /api/text-manager/files` - lista plików i folderów
   - Query params: `?path=string` (ścieżka względna)
   - Response: tablica obiektów z name, path, relativePath, size, isDirectory
-  
 - ✅ `POST /api/text-manager/create-folder` - utwórz podfolder
   - Request body: `{ relativePath: string, folderName: string }`
   - Tworzy nowy folder w określonej lokalizacji
-  
 - ✅ `POST /api/text-manager/rename` - zmień nazwę pliku
   - Request body: `{ oldPath: string, newName: string }`
   - Zmiana nazwy pliku .txt
-  
 - ✅ `DELETE /api/text-manager/delete` - usuń pliki
   - Request body: `{ files: string[] }`
   - Batch delete wielu plików
-  
 - ✅ `POST /api/text-manager/move-to-project` - przenieś do projektu
   - Request body: `{ files: string[], albumId: string, projectName: string, createNewProject?: boolean }`
   - Automatyczne nazewnictwo: `{projekt}-tekst-{001}.txt`
   - Transliteracja polskich znaków (ą→a, ć→c, ę→e, ł→l, ń→n, ó→o, ś→s, ź→z, ż→z)
   - Opcjonalne utworzenie nowego projektu w albumie "Robocze"
-  
 - ✅ `POST /api/text-manager/move-to-folder` - przenieś między folderami
   - Request body: `{ files: string[], targetPath: string }`
   - Przenoszenie między podfolderami Teksty
-  
 - ✅ `POST /api/text-manager/open` - otwórz w Notepad
   - Request body: `{ relativePath: string }`
   - Otwiera plik w systemowym Notepad (Windows)
-  
 - ✅ `GET /api/text-manager/albums` - lista albumów
   - Response: tablica albumów dla wyboru przy przypisywaniu
-  
 - ✅ `GET /api/text-manager/albums/:albumId/projects` - projekty w albumie
   - Response: tablica projektów w wybranym albumie
 
@@ -694,7 +755,7 @@ System pozwala na przeglądanie wszystkich plików na różnych poziomach hierar
 - Przyciski dostępne w: `AlbumGrid`, `ProjectList`, `ProjectView`
 
 ## Kontakt z Kierownikiem
-
+funkcję wypakowania tekstów FastNotepad z algorytmem similarity matching
 Przy wątpliwościach zawsze pytaj kierownika projektu przed implementacją.
 
 ---

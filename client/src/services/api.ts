@@ -421,5 +421,12 @@ export const api = {
     })
     return handleResponse(response)
   },
+
+  async unpackTexts(): Promise<{ message: string; stats: any; output: string }> {
+    const response = await fetch(`${API_BASE}/text-manager/unpack-texts`, {
+      method: 'POST',
+    })
+    return handleResponse(response)
+  },
 }
 

@@ -1,7 +1,14 @@
 import { Router, Request, Response } from 'express'
 import fs from 'fs-extra'
 import path from 'path'
+import { exec } from 'child_process'
+import { promisify } from 'util'
+import { fileURLToPath } from 'url'
+import { dirname } from 'path'
 
+const execPromise = promisify(exec)
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 const router = Router()
 const BASE_TEXT_PATH = 'D:\\DATA\\Norfeusz\\Teksty'
 
@@ -401,6 +408,116 @@ router.post('/open', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Error opening file:', error)
     res.status(500).json({ success: false, error: error.message || 'Nie udało się otworzyć pliku' })
+  }
+})
+
+// Wypakuj teksty z FastNotepad i zorganizuj
+router.post('/unpack-texts', async (req: Request, res: Response) => {
+  try {
+    console.log('🚀 Rozpoczynam rozpakowywanie tekstów...')
+    
+    // Znajdź plik FastNotepad* w folderze Teksty
+    const textFiles = await fs.readdir(BASE_TEXT_PATH)
+    const fastNotepadFile = textFiles.find(f => f.startsWith('FastNotepad'))
+    
+    if (!fastNotepadFile) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Nie znaleziono pliku FastNotepad w folderze Teksty' 
+      })
+    }
+    
+    const backupFilePath = path.join(BASE_TEXT_PATH, fastNotepadFile)
+    const tempUnpackFolder = path.join(BASE_TEXT_PATH, '.temp_unpacked')
+    const targetFolder = path.join(BASE_TEXT_PATH, 'wyodrebnione_teksty')
+    
+    // Usuń tymczasowy folder jeśli istnieje
+    if (await fs.pathExists(tempUnpackFolder)) {
+      await fs.remove(tempUnpackFolder)
+    }
+    
+    // Ścieżki do skryptów Python
+    const scriptPath = path.join(__dirname, '..', '..', 'scripts')
+    const unpackScript = path.join(scriptPath, 'rozpakuj_fastnotepad.py')
+    const organizeScript = path.join(scriptPath, 'organize_texts.py')
+    
+    console.log(`📦 Plik backup: ${backupFilePath}`)
+    console.log(`📂 Folder tymczasowy: ${tempUnpackFolder}`)
+    console.log(`📂 Folder docelowy: ${targetFolder}`)
+    
+    // Krok 1: Rozpakuj teksty
+    console.log('\n📥 Krok 1: Rozpakowywanie...')
+    const unpackCommand = `chcp 65001 > nul && python "${unpackScript}" "${backupFilePath}" "${tempUnpackFolder}"`
+    
+    try {
+      const { stdout: unpackOutput, stderr: unpackError } = await execPromise(unpackCommand, {
+        cwd: scriptPath,
+        maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+        env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+      })
+      
+      console.log('Unpacking output:', unpackOutput)
+      if (unpackError) console.error('Unpacking stderr:', unpackError)
+    } catch (error: any) {
+      console.error('❌ Błąd rozpakowywania:', error)
+      return res.status(500).json({ 
+        success: false, 
+        error: `Błąd rozpakowywania: ${error.message}` 
+      })
+    }
+    
+    // Krok 2: Organizuj teksty
+    console.log('\n🎯 Krok 2: Organizacja tekstów...')
+    const organizeCommand = `chcp 65001 > nul && python "${organizeScript}" "${tempUnpackFolder}" "${targetFolder}"`
+    
+    try {
+      const { stdout: organizeOutput, stderr: organizeError } = await execPromise(organizeCommand, {
+        cwd: scriptPath,
+        maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+        env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+      })
+      
+      console.log('Organization output:', organizeOutput)
+      if (organizeError) console.error('Organization stderr:', organizeError)
+      
+      // Parsuj statystyki z output (jeśli możliwe)
+      let stats = {
+        skipped: 0,
+        addedAsVersion: 0,
+        addedAsNew: 0
+      }
+      
+      const skippedMatch = organizeOutput.match(/Pominiętych.*?(\d+)/)
+      const versionMatch = organizeOutput.match(/Dodanych jako wersje.*?(\d+)/)
+      const newMatch = organizeOutput.match(/Dodanych jako nowe.*?(\d+)/)
+      
+      if (skippedMatch) stats.skipped = parseInt(skippedMatch[1])
+      if (versionMatch) stats.addedAsVersion = parseInt(versionMatch[1])
+      if (newMatch) stats.addedAsNew = parseInt(newMatch[1])
+      
+      // Usuń tymczasowy folder
+      if (await fs.pathExists(tempUnpackFolder)) {
+        await fs.remove(tempUnpackFolder)
+      }
+      
+      res.json({ 
+        success: true, 
+        data: { 
+          message: 'Teksty rozpakowane i zorganizowane',
+          stats,
+          output: organizeOutput
+        } 
+      })
+    } catch (error: any) {
+      console.error('❌ Błąd organizacji:', error)
+      return res.status(500).json({ 
+        success: false, 
+        error: `Błąd organizacji: ${error.message}` 
+      })
+    }
+  } catch (error: any) {
+    console.error('Error unpacking texts:', error)
+    res.status(500).json({ success: false, error: error.message || 'Nie udało się wypakować tekstów' })
   }
 })
 
