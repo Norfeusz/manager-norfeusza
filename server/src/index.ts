@@ -7,6 +7,7 @@ import filesRouter from './routes/files'
 import sortowniaRouter from './routes/sortownia'
 import coversRouter from './routes/covers'
 import simpleFoldersRouter from './routes/simple-folders'
+import textManagerRouter from './routes/text-manager'
 import { fileSystemService } from './services/file-system-service'
 
 dotenv.config()
@@ -33,6 +34,7 @@ app.use('/api/files', filesRouter)
 app.use('/api/sortownia', sortowniaRouter)
 app.use('/api/covers', coversRouter)
 app.use('/api/simple-folders', simpleFoldersRouter)
+app.use('/api/text-manager', textManagerRouter)
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`)

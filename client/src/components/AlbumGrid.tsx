@@ -28,7 +28,7 @@ export default function AlbumGrid() {
   // Foldery plików
   const fileFolders = [
     { name: 'Bity', icon: '🎵', path: '/pliki/bity' },
-    { name: 'Teksty', icon: '📝', path: '/pliki/teksty' },
+    { name: 'Teksty', icon: '📝', path: '/text-manager' },
     { name: 'Pliki', icon: '📁', path: '/pliki/inne' },
     { name: 'Sortownia', icon: '📦', path: '/sortownia' }
   ]

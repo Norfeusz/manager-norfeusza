@@ -192,6 +192,59 @@ Funkcje:
 - **Usuwanie**: Z opcją przeniesienia plików do sortowni
 - **Tryb organizacji**: Zmiana kolejności projektów w albumie
 
+### 9. Zarządzanie Tekstami (TextManager)
+
+System zarządzania tekstami w folderze `D:\DATA\Norfeusz\Teksty\` z pełną funkcjonalnością:
+
+#### Funkcje podstawowe:
+- **Nawigacja breadcrumb**: Przeglądanie hierarchii folderów z kliknięciem w ścieżkę
+- **Multi-select**: Zaznaczanie wielu plików jednocześnie (checkbox UI)
+- **Operacje pojedyncze**: Przyciski akcji dla każdego pliku
+- **Double-click**: Otwieranie plików w Notepad
+
+#### Operacje na plikach:
+- **Otwórz** - podwójne kliknięcie otwiera plik w Notepad (Windows)
+- **Zmień nazwę** - zmiana nazwy pliku .txt
+- **Usuń** - usunięcie zaznaczonych plików
+- **Utwórz folder** - tworzenie nowego podfolderu
+- **Przypisz do projektu** - przeniesienie do projektu muzycznego z automatycznym nazewnictwem
+- **Przenieś do folderu** - organizacja między podfolderami
+
+#### Przypisywanie do projektu:
+- **Tryb "Istniejący projekt"**:
+  - Wybór albumu z listy
+  - Wybór projektu z wybranego albumu
+  - Automatyczne ładowanie listy projektów
+  
+- **Tryb "Utwórz nowy projekt"**:
+  - Pole do wpisania nazwy projektu
+  - Utworzenie projektu w albumie "Robocze"
+  - Przeniesienie pliku do nowo utworzonego projektu
+
+#### Przenoszenie między folderami:
+- **Tryb "Istniejący folder"**:
+  - Lista folderów z głównego katalogu Teksty
+  - Lista podfolderów z bieżącego katalogu
+  - Opcja przeniesienia do głównego folderu Teksty
+  
+- **Tryb "Utwórz nowy podfolder"**:
+  - Pole do wpisania nazwy folderu
+  - Automatyczne utworzenie folderu w bieżącej lokalizacji
+  - Przeniesienie plików do nowo utworzonego folderu
+
+#### Automatyczne nazewnictwo plików:
+- Format: `{nazwa_projektu}-tekst-{001}.txt`
+- **Transliteracja polskich znaków**: ą→a, ć→c, ę→e, ł→l, ń→n, ó→o, ś→s, ź→z, ż→z
+- **Sekwencyjne numerowanie**: 001, 002, 003...
+- Przykład: "Sto tysięcy" → `sto_tysiecy-tekst-001.txt`
+
+#### UI/UX:
+- Ikony dla plików i folderów (📄 .txt, 📁 folder)
+- Breadcrumb z emoji 🏠 dla głównego folderu
+- Tryby modalne z przyciskami wyboru (📁 Istniejący / ✨ Utwórz nowy)
+- Podgląd docelowej ścieżki przed przeniesieniem
+- Walidacja: disabled buttons gdy brak wymaganych danych
+
 ## API Endpointy (Zaimplementowane)
 
 ### Albumy
@@ -274,6 +327,44 @@ Funkcje:
   - folderPath: relatywna ścieżka od D:/DATA/Norfeusz
   - Obsługa zagnieżdżonych folderów (np. "Sortownia/subfolder")
   - Response: lista plików i folderów z metadanymi
+
+### TextManager - Zarządzanie Tekstami
+
+- ✅ `GET /api/text-manager/files` - lista plików i folderów
+  - Query params: `?path=string` (ścieżka względna)
+  - Response: tablica obiektów z name, path, relativePath, size, isDirectory
+  
+- ✅ `POST /api/text-manager/create-folder` - utwórz podfolder
+  - Request body: `{ relativePath: string, folderName: string }`
+  - Tworzy nowy folder w określonej lokalizacji
+  
+- ✅ `POST /api/text-manager/rename` - zmień nazwę pliku
+  - Request body: `{ oldPath: string, newName: string }`
+  - Zmiana nazwy pliku .txt
+  
+- ✅ `DELETE /api/text-manager/delete` - usuń pliki
+  - Request body: `{ files: string[] }`
+  - Batch delete wielu plików
+  
+- ✅ `POST /api/text-manager/move-to-project` - przenieś do projektu
+  - Request body: `{ files: string[], albumId: string, projectName: string, createNewProject?: boolean }`
+  - Automatyczne nazewnictwo: `{projekt}-tekst-{001}.txt`
+  - Transliteracja polskich znaków (ą→a, ć→c, ę→e, ł→l, ń→n, ó→o, ś→s, ź→z, ż→z)
+  - Opcjonalne utworzenie nowego projektu w albumie "Robocze"
+  
+- ✅ `POST /api/text-manager/move-to-folder` - przenieś między folderami
+  - Request body: `{ files: string[], targetPath: string }`
+  - Przenoszenie między podfolderami Teksty
+  
+- ✅ `POST /api/text-manager/open` - otwórz w Notepad
+  - Request body: `{ relativePath: string }`
+  - Otwiera plik w systemowym Notepad (Windows)
+  
+- ✅ `GET /api/text-manager/albums` - lista albumów
+  - Response: tablica albumów dla wyboru przy przypisywaniu
+  
+- ✅ `GET /api/text-manager/albums/:albumId/projects` - projekty w albumie
+  - Response: tablica projektów w wybranym albumie
 
 ### Health Check
 
@@ -608,4 +699,4 @@ Przy wątpliwościach zawsze pytaj kierownika projektu przed implementacją.
 
 ---
 
-**Ostatnia aktualizacja**: 14 stycznia 2026 - Dodano funkcje ZIP Składu i "Wszystkie Pliki"
+**Ostatnia aktualizacja**: 15 stycznia 2026 - Dodano system zarządzania tekstami (TextManager)

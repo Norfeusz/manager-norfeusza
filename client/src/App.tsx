@@ -5,6 +5,7 @@ import ProjectView from './components/ProjectView'
 import FolderView from './components/FolderView'
 import SimpleFolderView from './components/SimpleFolderView'
 import Sortownia from './components/Sortownia'
+import TextManager from './components/TextManager'
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/folder/:albumId/:projectName/:folderType" element={<FolderView />} />
         <Route path="/pliki/:folderType" element={<SimpleFolderView />} />
         <Route path="/sortownia" element={<Sortownia />} />
+        <Route path="/text-manager" element={<TextManager />} />
       </Routes>
     </Router>
   )

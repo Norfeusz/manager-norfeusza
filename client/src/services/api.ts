@@ -344,5 +344,82 @@ export const api = {
     })
     return handleResponse(response)
   },
+
+  // Text Manager - Zarządzanie tekstami
+  async getTextFiles(relativePath: string = ''): Promise<any[]> {
+    const response = await fetch(`${API_BASE}/text-manager/files?path=${encodeURIComponent(relativePath)}`)
+    return handleResponse(response)
+  },
+
+  async createTextFolder(relativePath: string, folderName: string): Promise<{ message: string; path: string }> {
+    const response = await fetch(`${API_BASE}/text-manager/create-folder`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ relativePath, folderName }),
+    })
+    return handleResponse(response)
+  },
+
+  async renameTextFile(relativePath: string, newName: string): Promise<{ message: string; newPath: string }> {
+    const response = await fetch(`${API_BASE}/text-manager/rename`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ relativePath, newName }),
+    })
+    return handleResponse(response)
+  },
+
+  async deleteTextFiles(relativePaths: string[]): Promise<{ message: string; deletedCount: number }> {
+    const response = await fetch(`${API_BASE}/text-manager/delete`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ relativePaths }),
+    })
+    return handleResponse(response)
+  },
+
+  async moveTextsToProject(
+    relativePaths: string[],
+    albumId: string,
+    projectName: string
+  ): Promise<{ message: string; movedCount: number; targetPath: string }> {
+    const response = await fetch(`${API_BASE}/text-manager/move-to-project`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ relativePaths, albumId, projectName }),
+    })
+    return handleResponse(response)
+  },
+
+  async moveTextsToFolder(
+    relativePaths: string[],
+    targetRelativePath: string
+  ): Promise<{ message: string; movedCount: number }> {
+    const response = await fetch(`${API_BASE}/text-manager/move-to-folder`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ relativePaths, targetRelativePath }),
+    })
+    return handleResponse(response)
+  },
+
+  async getTextManagerAlbums(): Promise<any[]> {
+    const response = await fetch(`${API_BASE}/text-manager/albums`)
+    return handleResponse(response)
+  },
+
+  async getTextManagerProjects(albumId: string): Promise<any[]> {
+    const response = await fetch(`${API_BASE}/text-manager/albums/${encodeURIComponent(albumId)}/projects`)
+    return handleResponse(response)
+  },
+
+  async openTextFile(relativePath: string): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE}/text-manager/open`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ relativePath }),
+    })
+    return handleResponse(response)
+  },
 }
 
