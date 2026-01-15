@@ -6,6 +6,22 @@ import path from 'path'
 const router = Router()
 const BASE_PATH = 'D:\\DATA\\Norfeusz'
 
+// Pobierz okładkę dla prostego folderu (Bity/cover.png, Teksty/cover.png, Pliki/cover.png, Sortownia/cover.png)
+router.get('/simple-folder/:folderName/cover.png', async (req: Request, res: Response) => {
+  try {
+    const { folderName } = req.params
+    const coverPath = path.join(BASE_PATH, folderName, 'cover.png')
+    
+    if (!(await fs.pathExists(coverPath))) {
+      return res.status(404).json({ success: false, error: 'Okładka nie istnieje' })
+    }
+
+    res.sendFile(coverPath)
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
 // Konfiguracja multer dla upload okładek
 const upload = multer({
   dest: 'uploads/temp/',

@@ -24,6 +24,7 @@ export default function SimpleFolderView() {
   const [files, setFiles] = useState<FileItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [coverUrl, setCoverUrl] = useState<string | null>(null)
 
   const config = folderType ? folderConfig[folderType] : null
   const subPath = searchParams.get('path') || ''
@@ -33,6 +34,35 @@ export default function SimpleFolderView() {
       loadFiles()
     }
   }, [folderType, subPath])
+
+  useEffect(() => {
+    // Ładuj okładkę dla wszystkich folderów (Bity, Teksty, Pliki, Sortownia)
+    loadCover()
+  }, [folderType])
+
+  async function loadCover() {
+    if (!config) return
+    
+    try {
+      // Każdy folder ma swój cover.png: Bity/cover.png, Teksty/cover.png, Pliki/cover.png, Sortownia/cover.png
+      const pngUrl = `http://localhost:4001/api/covers/simple-folder/${config.path}/cover.png`
+      
+      console.log('Próba załadowania okładki dla', config.title, ':', pngUrl)
+      
+      // Sprawdź czy plik istnieje
+      const response = await fetch(pngUrl)
+      if (response.ok) {
+        console.log('Okładka załadowana pomyślnie dla', config.title)
+        setCoverUrl(pngUrl)
+      } else {
+        console.log('Brak okładki dla', config.title, '- status:', response.status)
+        setCoverUrl(null)
+      }
+    } catch (err) {
+      console.log('Błąd ładowania okładki:', err)
+      setCoverUrl(null)
+    }
+  }
 
   async function loadFiles() {
     try {
@@ -111,10 +141,37 @@ export default function SimpleFolderView() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-7xl mx-auto">
+    <div 
+      className="min-h-screen bg-gray-100 p-8"
+      style={
+        coverUrl
+          ? {
+              backgroundImage: `url("${coverUrl}")`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundAttachment: 'fixed',
+            }
+          : undefined
+      }
+    >
+      {/* Blur overlay */}
+      {coverUrl && (
+        <div 
+          className="fixed inset-0 pointer-events-none"
+          style={{
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            zIndex: 0
+          }}
+        />
+      )}
+      
+      <div className="max-w-7xl mx-auto relative" style={{ zIndex: 1 }}>
         {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
+        <div 
+          className="flex items-center gap-4 mb-8 p-4 rounded-lg"
+          style={coverUrl ? { backgroundColor: 'rgba(255, 255, 255, 0.95)' } : undefined}
+        >
           <button
             onClick={handleGoBack}
             className="p-2 hover:bg-gray-200 rounded-lg transition"
@@ -131,7 +188,10 @@ export default function SimpleFolderView() {
         </div>
 
         {/* Lista plików */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div 
+          className="bg-white rounded-lg shadow-md overflow-hidden"
+          style={coverUrl ? { backgroundColor: 'rgba(255, 255, 255, 0.95)' } : undefined}
+        >
           {files.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
               Folder jest pusty

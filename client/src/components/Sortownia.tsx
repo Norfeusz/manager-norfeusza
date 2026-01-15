@@ -47,9 +47,25 @@ export default function Sortownia() {
   // Podfoldery
   const subPath = searchParams.get('path') || ''
 
+  // Cover image
+  const [coverUrl, setCoverUrl] = useState<string | null>(null)
+
   useEffect(() => {
     loadData()
+    loadCover()
   }, [subPath])
+
+  async function loadCover() {
+    try {
+      const pngUrl = `http://localhost:4001/api/covers/simple-folder/Sortownia/cover.png`
+      const response = await fetch(pngUrl)
+      if (response.ok) {
+        setCoverUrl(pngUrl)
+      }
+    } catch (err) {
+      console.log('Brak okładki dla Sortownia')
+    }
+  }
 
   useEffect(() => {
     if (selectedAlbum) {
@@ -286,8 +302,32 @@ export default function Sortownia() {
   )
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-7xl mx-auto">
+    <div 
+      className="min-h-screen bg-gray-100 p-8"
+      style={
+        coverUrl
+          ? {
+              backgroundImage: `url("${coverUrl}")`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundAttachment: 'fixed',
+            }
+          : undefined
+      }
+    >
+      {/* Blur overlay */}
+      {coverUrl && (
+        <div 
+          className="fixed inset-0 pointer-events-none"
+          style={{
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            zIndex: 0
+          }}
+        />
+      )}
+      
+      <div className="max-w-7xl mx-auto relative" style={{ zIndex: 1 }}>
         <div className="flex items-center gap-4 mb-8">
           <button
             onClick={handleGoBack}
@@ -347,7 +387,10 @@ export default function Sortownia() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md">
+        <div 
+          className="bg-white rounded-lg shadow-md"
+          style={coverUrl ? { backgroundColor: 'rgba(255, 255, 255, 0.95)' } : undefined}
+        >
           {files.length === 0 ? (
             <div className="text-center py-12 text-gray-600">
               <p className="text-xl">Brak plików w sortowni</p>
@@ -448,7 +491,10 @@ export default function Sortownia() {
       {/* Modal przypisywania do projektu */}
       {showMoveModal && selectedFile && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div 
+            className="bg-white rounded-lg p-8 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto"
+            style={coverUrl ? { backgroundColor: 'rgba(255, 255, 255, 0.98)' } : undefined}
+          >
             <h2 className="text-2xl font-bold mb-4">Przypisz plik do projektu</h2>
             <p className="text-gray-600 mb-4">
               {selectedFiles.size > 0 ? (

@@ -29,6 +29,7 @@ export default function FolderView() {
   const [newFileName, setNewFileName] = useState('')
   const [albumCoverUrl, setAlbumCoverUrl] = useState<string | null>(null)
   const [arranging, setArranging] = useState(false)
+  const [creatingFLProject, setCreatingFLProject] = useState(false)
 
   useEffect(() => {
     if (albumId && projectName && folderType) {
@@ -238,12 +239,21 @@ export default function FolderView() {
             </p>
           </div>
           <div className="flex gap-3">
+            {decodedFolder === 'Projekt FL' && (
+              <button
+                onClick={handleCreateFLProject}
+                disabled={creatingFLProject}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-semibold transition"
+              >
+                {creatingFLProject ? 'Tworzenie...' : '🎹 Utwórz projekt FL'}
+              </button>
+            )}
             <button
               onClick={handleArrangeVersions}
               disabled={arranging || files.length === 0}
               className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-semibold transition"
             >
-              {arranging ? 'Szeregowanie...' : '\ud83d\udd22 Szereguj wersje'}
+              {arranging ? 'Szeregowanie...' : '🔢 Szereguj wersje'}
             </button>
             <label className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition cursor-pointer">
               {uploading ? 'Przesyłanie...' : '+ Upload Pliki'}

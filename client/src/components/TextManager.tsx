@@ -54,9 +54,28 @@ export default function TextManager() {
   // Unpack texts
   const [unpacking, setUnpacking] = useState(false)
 
+  // Cover image
+  const [coverUrl, setCoverUrl] = useState<string | null>(null)
+
   useEffect(() => {
     loadFiles()
   }, [currentPath])
+
+  useEffect(() => {
+    loadCover()
+  }, [])
+
+  async function loadCover() {
+    try {
+      const pngUrl = `http://localhost:4001/api/covers/simple-folder/Teksty/cover.png`
+      const response = await fetch(pngUrl)
+      if (response.ok) {
+        setCoverUrl(pngUrl)
+      }
+    } catch (err) {
+      console.log('Brak okładki dla Teksty')
+    }
+  }
 
   async function loadFiles() {
     try {
@@ -418,10 +437,37 @@ export default function TextManager() {
   const breadcrumbs = getBreadcrumbs()
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-7xl mx-auto">
+    <div 
+      className="min-h-screen bg-gray-100 p-8"
+      style={
+        coverUrl
+          ? {
+              backgroundImage: `url("${coverUrl}")`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundAttachment: 'fixed',
+            }
+          : undefined
+      }
+    >
+      {/* Blur overlay */}
+      {coverUrl && (
+        <div 
+          className="fixed inset-0 pointer-events-none"
+          style={{
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            zIndex: 0
+          }}
+        />
+      )}
+      
+      <div className="max-w-7xl mx-auto relative" style={{ zIndex: 1 }}>
         {/* Header */}
-        <div className="mb-6">
+        <div 
+          className="mb-6 p-4 rounded-lg"
+          style={coverUrl ? { backgroundColor: 'rgba(255, 255, 255, 0.95)' } : { padding: 0 }}
+        >
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-4xl font-bold text-gray-800">📝 Zarządzanie Tekstami</h1>
             <button
@@ -534,7 +580,10 @@ export default function TextManager() {
         </div>
 
         {/* Files list */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div 
+          className="bg-white rounded-lg shadow-md p-6"
+          style={coverUrl ? { backgroundColor: 'rgba(255, 255, 255, 0.95)' } : undefined}
+        >
           {files.length === 0 ? (
             <div className="text-center text-gray-500 py-12">
               <p className="text-xl">Brak plików w tym folderze</p>
