@@ -30,6 +30,7 @@ export default function FolderView() {
   const [albumCoverUrl, setAlbumCoverUrl] = useState<string | null>(null)
   const [arranging, setArranging] = useState(false)
   const [creatingFLProject, setCreatingFLProject] = useState(false)
+  const [creatingReaperProject, setCreatingReaperProject] = useState(false)
 
   useEffect(() => {
     if (albumId && projectName && folderType) {
@@ -113,6 +114,47 @@ export default function FolderView() {
       alert(`Błąd: ${err.message}`)
     }
   }
+
+  async function handleCreateFLProject() {
+    if (!albumId || !projectName) return
+    
+    if (!confirm(`Utworzyć nowy projekt FL Studio dla "${projectName}"?\n\nZostanie automatycznie otwarty w FL Studio.`)) {
+      return
+    }
+    
+    try {
+      setCreatingFLProject(true)
+      const result = await api.createFLProject(albumId, projectName)
+      alert(`✅ Projekt FL Studio utworzony!\n\n📁 Plik: ${result.fileName}\n💾 Backupy: ${result.backupPath}`)
+      loadFiles()
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Nieznany błąd'
+      alert(`Błąd: ${errorMessage}`)
+    } finally {
+      setCreatingFLProject(false)
+    }
+  }
+
+  async function handleCreateReaperProject() {
+    if (!albumId || !projectName) return
+    
+    if (!confirm(`Utworzyć nowy projekt Reaper dla "${projectName}"?\n\nZostanie automatycznie otwarty w Reaper.`)) {
+      return
+    }
+    
+    try {
+      setCreatingReaperProject(true)
+      const result = await api.createReaperProject(albumId, projectName)
+      alert(`✅ Projekt Reaper utworzony!\n\n📁 Plik: ${result.fileName}\n💾 Backupy: ${result.backupPath}`)
+      loadFiles()
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Nieznany błąd'
+      alert(`Błąd: ${errorMessage}`)
+    } finally {
+      setCreatingReaperProject(false)
+    }
+  }
+
   async function handleArrangeVersions() {
     if (!confirm('Czy na pewno chcesz szeregowa\u0107 wersje? Pliki zostan\u0105 przenumerowane od najstarszej do najnowszej.')) return
 
@@ -246,6 +288,15 @@ export default function FolderView() {
                 className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-semibold transition"
               >
                 {creatingFLProject ? 'Tworzenie...' : '🎹 Utwórz projekt FL'}
+              </button>
+            )}
+            {decodedFolder === 'Projekt Reaper' && (
+              <button
+                onClick={handleCreateReaperProject}
+                disabled={creatingReaperProject}
+                className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-semibold transition"
+              >
+                {creatingReaperProject ? 'Tworzenie...' : '🎚️ Utwórz projekt Reaper'}
               </button>
             )}
             <button

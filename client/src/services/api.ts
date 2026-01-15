@@ -438,5 +438,15 @@ export const api = {
     })
     return handleResponse(response)
   },
+
+  // Reaper
+  async createReaperProject(albumId: string, projectName: string): Promise<{ fileName: string; backupPath: string; message: string }> {
+    const response = await fetch(`${API_BASE}/reaper/create-project`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ albumId, projectName }),
+    })
+    return handleResponse(response)
+  },
 }
 

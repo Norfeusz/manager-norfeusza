@@ -9,6 +9,7 @@ import coversRouter from './routes/covers'
 import simpleFoldersRouter from './routes/simple-folders'
 import textManagerRouter from './routes/text-manager'
 import flStudioRouter from './routes/fl-studio'
+import reaperRouter from './routes/reaper'
 import { fileSystemService } from './services/file-system-service'
 
 dotenv.config()
@@ -37,6 +38,7 @@ app.use('/api/covers', coversRouter)
 app.use('/api/simple-folders', simpleFoldersRouter)
 app.use('/api/text-manager', textManagerRouter)
 app.use('/api/fl-studio', flStudioRouter)
+app.use('/api/reaper', reaperRouter)
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`)

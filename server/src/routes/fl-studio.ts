@@ -8,6 +8,7 @@ const execAsync = promisify(exec)
 const router = Router()
 const BASE_PATH = 'D:\\DATA\\Norfeusz'
 const FL_STUDIO_PATH = 'D:\\FL\\FL64.exe'
+const FL_TEMPLATE_PATH = 'D:\\FL\\Data\\Templates\\Empty\\Empty.flp'
 
 // Transliteracja polskich znaków
 function transliterate(text: string): string {
@@ -48,14 +49,10 @@ function generateFLProjectName(projectName: string, folderPath: string): string 
   return fileName
 }
 
-// Tworzy minimalny plik projektu FL Studio
+// Tworzy projekt FL Studio z szablonu
 async function createEmptyFLProject(filePath: string, backupPath: string): Promise<void> {
-  // FL Studio .flp jest w formacie binarnym, ale możemy stworzyć pustą strukturę
-  // Dla uproszczenia stworzymy pusty plik - FL Studio go otworzy i pozwoli zapisać
-  // W rzeczywistości FL Studio akceptuje puste pliki .flp i traktuje je jako nowe projekty
-  
-  // Tworzymy pusty plik
-  await fs.writeFile(filePath, Buffer.from([]))
+  // Kopiujemy pusty szablon FL Studio
+  await fs.copy(FL_TEMPLATE_PATH, filePath)
   
   // Upewnij się, że folder backupów istnieje
   await fs.ensureDir(backupPath)
@@ -92,21 +89,24 @@ router.post('/create-project', async (req: Request, res: Response) => {
     // Folder na backupy (w tym samym folderze)
     const backupPath = path.join(projectFolderPath, 'Backups')
     
-    // Utwórz pusty projekt FL
+    // Utwórz projekt FL z szablonu
     await createEmptyFLProject(filePath, backupPath)
     
     console.log(`✅ Utworzono projekt FL Studio: ${fileName}`)
+    console.log(`📁 Ścieżka: ${filePath}`)
     console.log(`📁 Backupy: ${backupPath}`)
     
     // Otwórz FL Studio z nowym projektem
-    // Używamy cudzysłowów dla ścieżek z spacjami
     const command = `"${FL_STUDIO_PATH}" "${filePath}"`
+    console.log(`🎹 Uruchamiam FL Studio: ${command}`)
     
-    exec(command, (error) => {
+    exec(command, (error, stdout, stderr) => {
       if (error) {
-        console.error('Błąd uruchamiania FL Studio:', error)
+        console.error('❌ Błąd uruchamiania FL Studio:', error)
+        console.error('stderr:', stderr)
       } else {
-        console.log('🎹 FL Studio uruchomione')
+        console.log('✅ FL Studio uruchomione pomyślnie')
+        if (stdout) console.log('stdout:', stdout)
       }
     })
     

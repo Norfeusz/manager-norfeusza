@@ -70,7 +70,9 @@ Manager Norfa/
 │   │   │   ├── text-manager.ts     # ✅ API dla zarządzania tekstami + wypakowanie
 │   │   │   ├── covers.ts           # ✅ API dla okładek
 │   │   │   ├── sortownia.ts        # ✅ API dla sortowni
-│   │   │   └── simple-folders.ts   # ✅ API dla prostych folderów
+│   │   │   ├── simple-folders.ts   # ✅ API dla prostych folderów
+│   │   │   ├── fl-studio.ts        # ✅ API dla FL Studio (tworzenie projektów)
+│   │   │   └── reaper.ts           # ✅ API dla Reaper (tworzenie projektów)
 │   │   └── services/               # Logika biznesowa
 │   │       ├── file-system-service.ts  # ✅ Zarządzanie folderami
 │   │       └── file-management-service.ts  # ✅ Operacje na plikach
@@ -199,6 +201,28 @@ Funkcje:
 - **Usuwanie**: Z opcją przeniesienia plików do sortowni
 - **Tryb organizacji**: Zmiana kolejności projektów w albumie
 
+### 9. Automatyzacja DAW (FL Studio & Reaper)
+
+#### FL Studio
+
+- **Przycisk w folderze "Projekt FL"**: 🎹 Utwórz projekt FL
+- **Automatyczne nazewnictwo**: `{projekt}-fl-001.flp` z inkrementacją
+- **Transliteracja**: Polskie znaki (ł→l, ą→a, ć→c, ę→e, ń→n, ó→o, ś→s, ź→z, ż→z)
+- **Szablon**: Kopia z `D:\FL\Data\Templates\Empty\Empty.flp`
+- **Folder backupów**: Automatyczne utworzenie `Backups/` w folderze projektu
+- **Auto-open**: FL Studio otwiera się automatycznie z nowym projektem
+- **Ścieżka**: `D:\FL\FL64.exe`
+
+#### Reaper
+
+- **Przycisk w folderze "Projekt Reaper"**: 🎚️ Utwórz projekt Reaper
+- **Automatyczne nazewnictwo**: `{projekt}-reaper-001.rpp` z inkrementacją
+- **Transliteracja**: Polskie znaki (ł→l, ą→a, ć→c, ę→e, ń→n, ó→o, ś→s, ź→z, ż→z)
+- **Szablon**: Podstawowy projekt (44.1kHz, 120 BPM, stereo, 2 master tracks)
+- **Folder backupów**: Automatyczne utworzenie `Backups/` w folderze projektu
+- **Auto-open**: Reaper otwiera się automatycznie z nowym projektem
+- **Ścieżka**: `C:\Program Files\REAPER (x64)\reaper.exe`
+
 ### 9. Zarządzanie Tekstami (TextManager)
 
 System zarządzania tekstami w folderze `D:\DATA\Norfeusz\Teksty\` z pełną funkcjonalnością:
@@ -285,16 +309,19 @@ System umożliwia inteligentne rozpakowywanie i organizację tekstów z kopii za
 #### Implementacja:
 
 **Backend**:
+
 - `server/scripts/rozpakuj_fastnotepad.py` - parser kopii zapasowej FastNotepad
 - `server/scripts/organize_texts.py` - inteligentna organizacja z similarity matching
 - `server/src/routes/text-manager.ts` - endpoint `POST /text-manager/unpack-texts`
 
 **Frontend**:
+
 - Przycisk "📦 Wypakuj teksty" w głównym folderze Teksty
 - Potwierdzenie przed rozpoczęciem
 - Wyświetlanie statystyk po zakończeniu
 
 **Python Dependencies**:
+
 - Python 3.13+
 - Środowisko wirtualne: `.venv/` w katalogu projektu
 - Moduły: pathlib, difflib, json (built-in)
@@ -302,6 +329,7 @@ System umożliwia inteligentne rozpakowywanie i organizację tekstów z kopii za
 #### Statystyki:
 
 Po zakończeniu wyświetlane są:
+
 - Liczba pominiętych duplikatów (100%)
 - Liczba dodanych wersji (40-99%)
 - Liczba nowych tekstów (0-39%)
@@ -426,6 +454,28 @@ Po zakończeniu wyświetlane są:
   - Response: tablica albumów dla wyboru przy przypisywaniu
 - ✅ `GET /api/text-manager/albums/:albumId/projects` - projekty w albumie
   - Response: tablica projektów w wybranym albumie
+
+### FL Studio - Automatyzacja Projektów
+
+- ✅ `POST /api/fl-studio/create-project` - utwórz projekt FL Studio
+  - Request body: `{ albumId: string, projectName: string }`
+  - Automatyczne nazewnictwo: `{projekt}-fl-{001}.flp`
+  - Transliteracja polskich znaków (ą→a, ć→c, ę→e, ł→l, ń→n, ó→o, ś→s, ź→z, ż→z)
+  - Kopiowanie szablonu z `D:\FL\Data\Templates\Empty\Empty.flp`
+  - Tworzenie folderu `Backups/` dla auto-backupów FL Studio
+  - Automatyczne otwarcie projektu w FL Studio (`D:\FL\FL64.exe`)
+  - Response: `{ fileName, backupPath, message }`
+
+### Reaper - Automatyzacja Projektów
+
+- ✅ `POST /api/reaper/create-project` - utwórz projekt Reaper
+  - Request body: `{ albumId: string, projectName: string }`
+  - Automatyczne nazewnictwo: `{projekt}-reaper-{001}.rpp`
+  - Transliteracja polskich znaków (ą→a, ć→c, ę→e, ł→l, ń→n, ó→o, ś→s, ź→z, ż→z)
+  - Tworzenie projektu z podstawowym szablonem .rpp (44.1kHz, 120 BPM, stereo)
+  - Tworzenie folderu `Backups/` dla backupów Reapera
+  - Automatyczne otwarcie projektu w Reaper (`C:\Program Files\REAPER (x64)\reaper.exe`)
+  - Response: `{ fileName, backupPath, message }`
 
 ### Health Check
 
@@ -754,10 +804,61 @@ System pozwala na przeglądanie wszystkich plików na różnych poziomach hierar
 - Komponent wielokrotnego użytku: `AllFilesModal.tsx`
 - Przyciski dostępne w: `AlbumGrid`, `ProjectList`, `ProjectView`
 
+## Automatyzacja DAW - Szczegóły Techniczne
+
+### FL Studio Integration
+
+**Wymagania**:
+- FL Studio zainstalowane w `D:\FL\FL64.exe`
+- Szablon Empty.flp w `D:\FL\Data\Templates\Empty\Empty.flp`
+
+**Proces tworzenia projektu**:
+1. Walidacja folderu "Projekt FL" w strukturze projektu
+2. Generowanie nazwy z transliteracją polskich znaków
+3. Sprawdzenie kolizji nazw (inkrementacja numeru: 001, 002, 003...)
+4. Kopiowanie szablonu Empty.flp do docelowej lokalizacji
+5. Utworzenie folderu Backups/ w tym samym katalogu
+6. Uruchomienie FL Studio z nowym projektem
+
+**Implementacja**:
+- Backend: `server/src/routes/fl-studio.ts`
+- Frontend: Przycisk w `FolderView.tsx` (widoczny gdy `folderType === 'Projekt FL'`)
+- API: `POST /api/fl-studio/create-project`
+
+### Reaper Integration
+
+**Wymagania**:
+- Reaper zainstalowany w `C:\Program Files\REAPER (x64)\reaper.exe`
+
+**Proces tworzenia projektu**:
+1. Walidacja folderu "Projekt Reaper" w strukturze projektu
+2. Generowanie nazwy z transliteracją polskich znaków
+3. Sprawdzenie kolizji nazw (inkrementacja numeru: 001, 002, 003...)
+4. Utworzenie pliku .rpp z podstawowym szablonem:
+   - Sample rate: 44100 Hz
+   - Tempo: 120 BPM
+   - Time signature: 4/4
+   - Master: 2 kanały (stereo)
+   - Podstawowe ustawienia projektu (grid, time mode, render settings)
+5. Utworzenie folderu Backups/ w tym samym katalogu
+6. Uruchomienie Reapera z nowym projektem
+
+**Implementacja**:
+- Backend: `server/src/routes/reaper.ts`
+- Frontend: Przycisk w `FolderView.tsx` (widoczny gdy `folderType === 'Projekt Reaper'`)
+- API: `POST /api/reaper/create-project`
+
+**Wspólne cechy obu integracji**:
+- Transliteracja: `ą→a`, `ć→c`, `ę→e`, `ł→l`, `ń→n`, `ó→o`, `ś→s`, `ź→z`, `ż→z`
+- Automatyczne wykrywanie konfliktów nazw
+- Folder Backups/ gotowy do konfiguracji auto-backupów w DAW
+- Natychmiastowe otwarcie DAW po utworzeniu projektu
+- Error handling z komunikatami w języku polskim
+
 ## Kontakt z Kierownikiem
-funkcję wypakowania tekstów FastNotepad z algorytmem similarity matching
+
 Przy wątpliwościach zawsze pytaj kierownika projektu przed implementacją.
 
 ---
 
-**Ostatnia aktualizacja**: 15 stycznia 2026 - Dodano system zarządzania tekstami (TextManager)
+**Ostatnia aktualizacja**: 15 stycznia 2026 - Dodano automatyzację FL Studio i Reaper
