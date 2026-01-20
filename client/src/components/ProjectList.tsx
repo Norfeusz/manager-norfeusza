@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Project, Album } from '../../../shared/src/types'
 import { api } from '../services/api'
 import AllFilesModal from './AllFilesModal'
@@ -518,8 +518,8 @@ export default function ProjectList() {
                   ) : (
                     <>
                       {/* Normalny tryb */}
-                      <div 
-                        onClick={() => navigate(`/project/${albumId}/${project.name}`)}
+                      <Link 
+                        to={`/project/${albumId}/${project.name}`}
                         className="flex items-center gap-4 flex-1 cursor-pointer group/project-item"
                       >
                         <div className="relative w-16 h-16 flex-shrink-0">
@@ -584,7 +584,7 @@ export default function ProjectList() {
                             Utworzono: {new Date(project.createdAt).toLocaleDateString('pl-PL')}
                           </p>
                         </div>
-                      </div>
+                      </Link>
                   
                   <div className="flex items-center gap-2">
                     {/* Menu akcji */}

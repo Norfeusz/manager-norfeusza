@@ -809,10 +809,12 @@ System pozwala na przeglądanie wszystkich plików na różnych poziomach hierar
 ### FL Studio Integration
 
 **Wymagania**:
+
 - FL Studio zainstalowane w `D:\FL\FL64.exe`
 - Szablon Empty.flp w `D:\FL\Data\Templates\Empty\Empty.flp`
 
 **Proces tworzenia projektu**:
+
 1. Walidacja folderu "Projekt FL" w strukturze projektu
 2. Generowanie nazwy z transliteracją polskich znaków
 3. Sprawdzenie kolizji nazw (inkrementacja numeru: 001, 002, 003...)
@@ -821,6 +823,7 @@ System pozwala na przeglądanie wszystkich plików na różnych poziomach hierar
 6. Uruchomienie FL Studio z nowym projektem
 
 **Implementacja**:
+
 - Backend: `server/src/routes/fl-studio.ts`
 - Frontend: Przycisk w `FolderView.tsx` (widoczny gdy `folderType === 'Projekt FL'`)
 - API: `POST /api/fl-studio/create-project`
@@ -828,9 +831,11 @@ System pozwala na przeglądanie wszystkich plików na różnych poziomach hierar
 ### Reaper Integration
 
 **Wymagania**:
+
 - Reaper zainstalowany w `C:\Program Files\REAPER (x64)\reaper.exe`
 
 **Proces tworzenia projektu**:
+
 1. Walidacja folderu "Projekt Reaper" w strukturze projektu
 2. Generowanie nazwy z transliteracją polskich znaków
 3. Sprawdzenie kolizji nazw (inkrementacja numeru: 001, 002, 003...)
@@ -844,16 +849,107 @@ System pozwala na przeglądanie wszystkich plików na różnych poziomach hierar
 6. Uruchomienie Reapera z nowym projektem
 
 **Implementacja**:
+
 - Backend: `server/src/routes/reaper.ts`
 - Frontend: Przycisk w `FolderView.tsx` (widoczny gdy `folderType === 'Projekt Reaper'`)
 - API: `POST /api/reaper/create-project`
 
 **Wspólne cechy obu integracji**:
+
 - Transliteracja: `ą→a`, `ć→c`, `ę→e`, `ł→l`, `ń→n`, `ó→o`, `ś→s`, `ź→z`, `ż→z`
 - Automatyczne wykrywanie konfliktów nazw
 - Folder Backups/ gotowy do konfiguracji auto-backupów w DAW
 - Natychmiastowe otwarcie DAW po utworzeniu projektu
 - Error handling z komunikatami w języku polskim
+
+## System Metadanych Projektu
+
+**Przegląd**:
+Każdy projekt może mieć dowolne pola metadanych (kluczy-wartości) przechowywane w pliku `.metadata.json` w katalogu projektu.
+
+**Domyślne pola**:
+- `Album` - ID albumu (ustawiane automatycznie)
+- `Projekt` - nazwa projektu (ustawiana automatycznie)
+- `Produkcja` - pole tekstowe (puste domyślnie)
+- `BPM` - pole tekstowe (puste domyślnie)
+
+**Funkcjonalności**:
+- Edycja wartości istniejących pól
+- Usuwanie pól (przycisk "Usuń" przy każdym polu)
+- Dodawanie pól z listy wszystkich używanych kluczy w innych projektach
+- Tworzenie nowych pól z dowolną nazwą
+- Pola są wspólne między projektami - jeśli dodasz pole "Wokalista" w jednym projekcie, będzie ono dostępne do dodania w innych
+
+**Implementacja**:
+
+Backend:
+- `server/src/routes/projects.ts`:
+  - `GET /:albumId/:projectName/metadata` - pobiera metadane projektu
+  - `PUT /:albumId/:projectName/metadata` - zapisuje metadane projektu
+  - `GET /metadata/all-keys` - zwraca wszystkie używane klucze
+- `server/src/services/file-system-service.ts`:
+  - `getProjectMetadata()` - odczyt z .metadata.json (zwraca domyślne jeśli brak)
+  - `updateProjectMetadata()` - zapis do .metadata.json
+  - `getAllMetadataKeys()` - skanowanie wszystkich projektów i zbieranie unikalnych kluczy
+
+Frontend:
+- `client/src/components/ProjectView.tsx`:
+  - Sekcja "Informacje" z trybem edycji/podglądu
+  - Przycisk "Edytuj" → pola stają się edytowalne
+  - Input dla każdego pola
+  - Przycisk "Usuń" przy każdym polu (w trybie edycji)
+  - Modal "Dodaj pole" z dropdown istniejących kluczy + opcja "Nowe pole..."
+  - Przyciski "Zapisz"/"Anuluj"
+- `client/src/services/api.ts`:
+  - `getProjectMetadata()` - fetch metadanych
+  - `updateProjectMetadata()` - update metadanych
+  - `getAllMetadataKeys()` - lista wszystkich kluczy
+
+**Storage**:
+```json
+{
+  "fields": {
+    "Album": "nazwa-albumu",
+    "Projekt": "nazwa-projektu",
+    "Produkcja": "Dystrybucja SP Records",
+    "BPM": "140",
+    "Wokalista": "Jan Kowalski"
+  }
+}
+```
+
+## Nawigacja w Nowych Kartach
+
+**Przegląd**:
+Wszystkie elementy klikalnego UI używają komponentu `<Link>` z react-router-dom zamiast `<div onClick>`, co umożliwia:
+- Prawy klik → "Otwórz link w nowej karcie"
+- Ctrl+klik → otwarcie w nowej karcie
+- Przeciąganie linku na pasek kart
+- Kopiowanie adresu URL
+
+**Zaimplementowane komponenty**:
+- `AlbumGrid.tsx` - karty albumów w sekcjach "Gotowe" i "Rzeźbione"
+- `AlbumGrid.tsx` - kafelki Sortownia, Text Manager (sekcja Pliki)
+- `ProjectList.tsx` - lista projektów w albumie
+- `ProjectView.tsx` - kafelki folderów w projekcie (Projekt FL, Projekt Reaper, Bity, etc.)
+
+**Zachowanie drag & drop**:
+W trybie organizacji albumów (`organizingMode`), link jest dezaktywowany (`to="#"`, `onClick preventDefault`) - działa wtedy tylko drag & drop.
+
+## Tworzenie Projektów
+
+**Domyślne zachowanie**:
+- Projekty tworzone **bez automatycznej numeracji** (np. "nazwa-projektu")
+- Numeracja jest dostępna, ale tylko gdy jawnie przekazana (`useNumbering: true`)
+
+**Backend**:
+- `server/src/routes/projects.ts`:
+  - `POST /` - `useNumbering = false` (domyślnie)
+  - Można nadpisać: `{ name: "projekt", albumId: "album", useNumbering: true }`
+
+**Frontend**:
+- `Sortownia.tsx` - tworzenie projektu przez modal (bez numeracji)
+- `ProjectList.tsx` - tworzenie projektu z formularza (z opcjonalną numeracją)
 
 ## Kontakt z Kierownikiem
 
@@ -861,4 +957,4 @@ Przy wątpliwościach zawsze pytaj kierownika projektu przed implementacją.
 
 ---
 
-**Ostatnia aktualizacja**: 15 stycznia 2026 - Dodano automatyzację FL Studio i Reaper
+**Ostatnia aktualizacja**: 20 stycznia 2026 - Dodano system metadanych, nawigację w nowych kartach, zmieniono domyślne tworzenie projektów

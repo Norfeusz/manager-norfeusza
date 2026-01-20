@@ -116,10 +116,10 @@ function transliterate(text: string): string {
 }
 
 function generateReaperProjectName(projectName: string, projectFolder: string): string {
-  // Normalizuj nazwę - zamień polskie znaki i spacje na podkreślniki
+  // Normalizuj nazwę - zamień polskie znaki i spacje na myślniki
   const normalized = transliterate(projectName)
     .toLowerCase()
-    .replace(/\s+/g, '_')
+    .replace(/\s+/g, '-')
     .replace(/[^a-z0-9_-]/g, '')
   
   // Znajdź następny numer
@@ -128,7 +128,7 @@ function generateReaperProjectName(projectName: string, projectFolder: string): 
   
   do {
     const counterStr = counter.toString().padStart(3, '0')
-    fileName = `${normalized}-reaper-${counterStr}.rpp`
+    fileName = `${normalized}_${counterStr}.rpp`
     counter++
   } while (fs.existsSync(path.join(projectFolder, fileName)))
   

@@ -238,6 +238,23 @@ router.get('/logo', async (req: Request, res: Response) => {
   }
 })
 
+// Pobierz ikonę VSC
+router.get('/vsc-icon', async (req: Request, res: Response) => {
+  try {
+    const iconPath = path.resolve('D:/DATA/Norfeusz/Pliki/images/vsc_icon.svg')
+    
+    if (await fs.pathExists(iconPath)) {
+      res.setHeader('Content-Type', 'image/svg+xml')
+      return res.sendFile(iconPath)
+    }
+    
+    res.status(404).json({ success: false, error: 'Ikona VSC nie została znaleziona' })
+  } catch (error: any) {
+    console.error('Error fetching VSC icon:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
 // Pobierz listę plików ZIP w folderze ZIP Skład
 router.get('/zip-archive/list', async (req: Request, res: Response) => {
   try {

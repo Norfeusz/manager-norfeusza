@@ -29,6 +29,7 @@ export default function Sortownia() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [showMoveModal, setShowMoveModal] = useState(false)
+  const [showMainFolderModal, setShowMainFolderModal] = useState(false)
   const [selectedFile, setSelectedFile] = useState<FileInfo | null>(null)
   const [selectedAlbum, setSelectedAlbum] = useState<string>('')
   const [projects, setProjects] = useState<Project[]>([])
@@ -41,8 +42,22 @@ export default function Sortownia() {
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false)
   
   // Nazewnictwo plików
-  const [namingMode, setNamingMode] = useState<'auto' | 'custom'>('auto')
+  const [namingMode, setNamingMode] = useState<'auto' | 'custom' | 'original' | 'hybrid'>('auto')
   const [customFileName, setCustomFileName] = useState('')
+  
+  // Ścieżki dla Demo bit
+  const [useSciezkiFolder, setUseSciezkiFolder] = useState(false)
+  
+  // Tworzenie nowego projektu
+  const [showCreateProjectModal, setShowCreateProjectModal] = useState(false)
+  const [newProjectName, setNewProjectName] = useState('')
+  const [creatingProject, setCreatingProject] = useState(false)
+  
+  // Nawigacja w folderze głównym
+  const [mainFolderPath, setMainFolderPath] = useState<string>('')
+  const [mainFolderContents, setMainFolderContents] = useState<FileInfo[]>([])
+  const [showCreateFolderInput, setShowCreateFolderInput] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
   
   // Podfoldery
   const subPath = searchParams.get('path') || ''
@@ -94,7 +109,44 @@ export default function Sortownia() {
     const newSubPath = subPath ? `${subPath}/${folderName}` : folderName
     setSearchParams({ path: newSubPath })
   }
+  async function loadMainFolderContents(folderPath: string) {
+    try {
+      const contents = await api.getSimpleFolderFiles(folderPath)
+      setMainFolderContents(contents)
+    } catch (err: any) {
+      console.error('Błąd wczytywania zawartości:', err)
+      setMainFolderContents([])
+    }
+  }
 
+  function openMainFolderModal() {
+    setShowMainFolderModal(true)
+    setMainFolderPath('')
+    setMainFolderContents([])
+  }
+
+  function navigateToMainFolder(folder: 'Bity' | 'Pliki' | 'Teksty') {
+    setMainFolderPath(folder)
+    loadMainFolderContents(folder)
+  }
+
+  function navigateToSubfolder(folderName: string) {
+    const newPath = mainFolderPath ? `${mainFolderPath}/${folderName}` : folderName
+    setMainFolderPath(newPath)
+    loadMainFolderContents(newPath)
+  }
+
+  function navigateBack() {
+    const parts = mainFolderPath.split('/')
+    parts.pop()
+    const newPath = parts.join('/')
+    setMainFolderPath(newPath)
+    if (newPath) {
+      loadMainFolderContents(newPath)
+    } else {
+      setMainFolderContents([])
+    }
+  }
   function handleGoBack() {
     if (subPath) {
       const parts = subPath.split('/')
@@ -106,6 +158,41 @@ export default function Sortownia() {
       }
     } else {
       navigate('/')
+    }
+  }
+
+  async function handleCreateProject() {
+    if (!newProjectName.trim()) {
+      alert('Wpisz nazwę projektu')
+      return
+    }
+
+    if (!selectedAlbum) {
+      alert('Wybierz album')
+      return
+    }
+
+    try {
+      setCreatingProject(true)
+      await api.createProject({
+        albumId: selectedAlbum,
+        name: newProjectName.trim(),
+        type: 'standard'
+      })
+      
+      // Odśwież listę projektów
+      await loadProjects()
+      
+      // Wybierz nowo utworzony projekt
+      setSelectedProject(newProjectName.trim())
+      
+      // Zamknij modal tworzenia projektu
+      setShowCreateProjectModal(false)
+      setNewProjectName('')
+    } catch (err: any) {
+      alert(`Błąd: ${err.message}`)
+    } finally {
+      setCreatingProject(false)
     }
   }
 
@@ -159,13 +246,147 @@ export default function Sortownia() {
 
   function openMoveModal(file: FileInfo) {
     setSelectedFile(file)
-    setSelectedAlbum('')
-    setSelectedProject('')
-    setSelectedFolder('')
-    setSelectedType('')
-    setNamingMode('auto')
-    setCustomFileName('')
+    // Nie resetuj wyboru projektu i folderu - zachowaj poprzedni wybór
+    // setSelectedAlbum('')
+    // setSelectedProject('')
+    // setSelectedFolder('')
+    // setSelectedType('')
+    // setNamingMode('auto')
+    setCustomFileName('') // Resetuj tylko custom name dla każdego pliku
     setShowMoveModal(true)
+  }
+
+  function generateAutoFileName(): string {
+    if (!selectedProject || !selectedFolder || !selectedFile) return ''
+    
+    // Transliteracja polskich znaków
+    const transliterate = (text: string): string => {
+      const polishMap: Record<string, string> = {
+        'ą': 'a', 'ć': 'c', 'ę': 'e', 'ł': 'l', 'ń': 'n', 'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z',
+        'Ą': 'A', 'Ć': 'C', 'Ę': 'E', 'Ł': 'L', 'Ń': 'N', 'Ó': 'O', 'Ś': 'S', 'Ź': 'Z', 'Ż': 'Z'
+      }
+      return text.split('').map(char => polishMap[char] || char).join('')
+    }
+
+    // Normalizacja nazwy projektu
+    const normalizedProjectName = transliterate(selectedProject)
+      .toLowerCase()
+      .replace(/\s+/g, '_')
+      .replace(/[^a-z0-9_]/g, '')
+
+    // Mapowanie folderów na typy
+    const folderTypeMap: Record<string, string> = {
+      'Projekt FL': 'projekt',
+      'Projekt Reaper': 'projekt',
+      'Tekst': 'tekst',
+      'Demo bit': 'bit_demo',
+      'Demo nawijka': 'nawijka_demo',
+      'Demo utwór': 'utwor_demo',
+      'Gotowe': selectedType ? `${selectedType}_gotowy` : 'gotowy',
+      'Pliki': 'plik',
+    }
+
+    const fileType = folderTypeMap[selectedFolder] || 'plik'
+    const extension = selectedFile.name.substring(selectedFile.name.lastIndexOf('.'))
+    
+    return `${normalizedProjectName}-${fileType}_001${extension}`
+  }
+
+  async function loadMainFolderContents(folderPath: string) {
+    try {
+      const contents = await api.getSimpleFolderFiles(folderPath)
+      setMainFolderContents(contents)
+    } catch (err: any) {
+      console.error('Błąd wczytywania zawartości:', err)
+      setMainFolderContents([])
+    }
+  }
+
+  function openMainFolderModal(file?: FileInfo) {
+    if (file) setSelectedFile(file)
+    setShowMainFolderModal(true)
+    setMainFolderPath('')
+    setMainFolderContents([])
+  }
+
+  function navigateToMainFolder(folder: 'Bity' | 'Pliki' | 'Teksty') {
+    setMainFolderPath(folder)
+    loadMainFolderContents(folder)
+  }
+
+  function navigateToSubfolder(folderName: string) {
+    const newPath = mainFolderPath ? `${mainFolderPath}/${folderName}` : folderName
+    setMainFolderPath(newPath)
+    loadMainFolderContents(newPath)
+  }
+
+  function navigateBack() {
+    const parts = mainFolderPath.split('/')
+    parts.pop()
+    const newPath = parts.join('/')
+    setMainFolderPath(newPath)
+    if (newPath) {
+      loadMainFolderContents(newPath)
+    } else {
+      setMainFolderContents([])
+    }
+  }
+  async function handleCreateFolder() {
+    if (!newFolderName.trim()) {
+      alert('Wpisz nazwę folderu')
+      return
+    }
+
+    try {
+      await api.createSimpleFolder(mainFolderPath, newFolderName.trim())
+      setNewFolderName('')
+      setShowCreateFolderInput(false)
+      // Odśwież zawartość
+      await loadMainFolderContents(mainFolderPath)
+    } catch (err: any) {
+      alert(`Błąd: ${err.message}`)
+    }
+  }
+
+  async function handleMoveToMainFolder(targetPath?: string) {
+    if (!selectedFile) return
+
+    try {
+      // Zapisz aktualną pozycję scrollowania
+      const scrollPosition = window.scrollY
+      
+      const finalPath = targetPath || mainFolderPath
+      if (!finalPath) {
+        alert('Wybierz folder docelowy')
+        return
+      }
+      
+      // Jeśli zaznaczono wiele plików, przenieś wszystkie
+      if (selectedFiles.size > 0) {
+        const filesToMove = files.filter(f => selectedFiles.has(f.path))
+        for (const file of filesToMove) {
+          const fileName = subPath ? `${subPath}/${file.name}` : file.name
+          await api.moveToMainFolder(fileName, finalPath)
+        }
+        setSelectedFiles(new Set())
+        setIsMultiSelectMode(false)
+      } else {
+        // Pojedynczy plik
+        const fileName = subPath ? `${subPath}/${selectedFile.name}` : selectedFile.name
+        await api.moveToMainFolder(fileName, finalPath)
+      }
+      
+      setShowMainFolderModal(false)
+      setSelectedFile(null)
+      setMainFolderPath('')
+      setMainFolderContents([])
+      await loadData()
+      
+      // Przywróć pozycję scrollowania
+      window.scrollTo(0, scrollPosition)
+    } catch (err: any) {
+      alert(`Błąd: ${err.message}`)
+    }
   }
 
   async function handleMoveFile() {
@@ -174,14 +395,14 @@ export default function Sortownia() {
       return
     }
 
-    const needsType = ['Demo bit', 'Demo nawijka', 'Demo utwor', 'Gotowe'].includes(selectedFolder)
+    const needsType = selectedFolder === 'Gotowe'
     if (needsType && !selectedType) {
       alert('Wybierz typ pliku')
       return
     }
     
-    if (namingMode === 'custom' && !customFileName.trim()) {
-      alert('Wpisz niestandardową nazwę pliku')
+    if ((namingMode === 'custom' || namingMode === 'hybrid') && !customFileName.trim()) {
+      alert('Wpisz nazwę pliku')
       return
     }
 
@@ -190,32 +411,48 @@ export default function Sortownia() {
       if (selectedFiles.size > 0) {
         const filesToMove = files.filter(f => selectedFiles.has(f.path))
         for (const file of filesToMove) {
+          // Jeśli jesteśmy w podfolderze, dodaj ścieżkę relatywną
+          const fileName = subPath ? `${subPath}/${file.name}` : file.name
+          const customNameToUse = (namingMode === 'custom' || namingMode === 'hybrid') ? customFileName.trim() : 
+                                  namingMode === 'original' ? file.name.replace(/\.[^.]+$/, '') : undefined
           await api.moveFromSortownia(
-            file.name,
+            fileName,
             selectedAlbum,
             selectedProject,
             selectedFolder,
             selectedType || undefined,
-            namingMode === 'custom' ? customFileName.trim() : undefined
+            customNameToUse,
+            useSciezkiFolder
           )
         }
         setSelectedFiles(new Set())
         setIsMultiSelectMode(false)
       } else {
         // Pojedynczy plik
+        // Jeśli jesteśmy w podfolderze, dodaj ścieżkę relatywną
+        const fileName = subPath ? `${subPath}/${selectedFile.name}` : selectedFile.name
+        const customNameToUse = (namingMode === 'custom' || namingMode === 'hybrid') ? customFileName.trim() : 
+                                namingMode === 'original' ? selectedFile.name.replace(/\.[^.]+$/, '') : undefined
         await api.moveFromSortownia(
-          selectedFile.name,
+          fileName,
           selectedAlbum,
           selectedProject,
           selectedFolder,
           selectedType || undefined,
-          namingMode === 'custom' ? customFileName.trim() : undefined
+          customNameToUse,
+          useSciezkiFolder
         )
       }
       
+      // Zapisz aktualną pozycję scrollowania
+      const scrollPosition = window.scrollY
+      
       setShowMoveModal(false)
       setSelectedFile(null)
-      loadData()
+      await loadData()
+      
+      // Przywróć pozycję scrollowania
+      window.scrollTo(0, scrollPosition)
     } catch (err: any) {
       alert(`Błąd: ${err.message}`)
     }
@@ -297,9 +534,7 @@ export default function Sortownia() {
     'Pliki',
   ]
 
-  const needsTypeSelection = ['Demo bit', 'Demo nawijka', 'Demo utwor', 'Gotowe'].includes(
-    selectedFolder
-  )
+  const needsTypeSelection = selectedFolder === 'Gotowe'
 
   return (
     <div 
@@ -355,6 +590,18 @@ export default function Sortownia() {
                   className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition"
                 >
                   📎 Przypisz zaznaczone ({selectedFiles.size})
+                </button>
+                <button
+                  onClick={() => {
+                    // Wybierz pierwszy plik jako reprezentatywny dla modala
+                    const firstFile = files.find(f => selectedFiles.has(f.path))
+                    if (firstFile) {
+                      openMainFolderModal(firstFile)
+                    }
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition"
+                >
+                  📁 Przenieś do folderu ({selectedFiles.size})
                 </button>
                 <button
                   onClick={handleDeleteSelected}
@@ -467,6 +714,12 @@ export default function Sortownia() {
                         Otwórz
                       </button>
                       <button
+                        onClick={() => openMainFolderModal(file)}
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm transition"
+                      >
+                        Przenieś do folderu
+                      </button>
+                      <button
                         onClick={() => openMoveModal(file)}
                         className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm transition"
                       >
@@ -523,10 +776,17 @@ export default function Sortownia() {
                 <label className="block mb-2 font-semibold">Projekt:</label>
                 <select
                   value={selectedProject}
-                  onChange={(e) => setSelectedProject(e.target.value)}
+                  onChange={(e) => {
+                    if (e.target.value === '__CREATE_NEW__') {
+                      setShowCreateProjectModal(true)
+                    } else {
+                      setSelectedProject(e.target.value)
+                    }
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="">Wybierz projekt</option>
+                  <option value="__CREATE_NEW__" className="font-semibold text-blue-600">+ Stwórz nowy projekt</option>
                   {projects.map((project) => (
                     <option key={project.name} value={project.name}>
                       {project.name}
@@ -570,6 +830,23 @@ export default function Sortownia() {
               </>
             )}
             
+            {selectedFolder === 'Demo bit' && (
+              <div className="mb-4">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={useSciezkiFolder}
+                    onChange={(e) => setUseSciezkiFolder(e.target.checked)}
+                    className="w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+                  />
+                  <div>
+                    <span className="font-medium text-gray-800">Przenieś do folderu "Ścieżki"</span>
+                    <p className="text-sm text-gray-600">Zachowa oryginalną nazwę pliku bez numeracji</p>
+                  </div>
+                </label>
+              </div>
+            )}
+            
             {selectedFolder && (
               <>
                 <label className="block mb-4 font-semibold">Nazewnictwo pliku:</label>
@@ -580,7 +857,7 @@ export default function Sortownia() {
                       name="namingMode"
                       value="auto"
                       checked={namingMode === 'auto'}
-                      onChange={(e) => setNamingMode(e.target.value as 'auto' | 'custom')}
+                      onChange={(e) => setNamingMode(e.target.value as 'auto' | 'custom' | 'original' | 'hybrid')}
                       className="w-4 h-4 text-purple-600"
                     />
                     <div>
@@ -593,9 +870,28 @@ export default function Sortownia() {
                     <input
                       type="radio"
                       name="namingMode"
+                      value="hybrid"
+                      checked={namingMode === 'hybrid'}
+                      onChange={(e) => {
+                        setNamingMode(e.target.value as 'auto' | 'custom' | 'original' | 'hybrid')
+                        // Wygeneruj automatyczną nazwę jako domyślną
+                        setCustomFileName(generateAutoFileName().replace(/\.[^.]+$/, ''))
+                      }}
+                      className="w-4 h-4 text-purple-600"
+                    />
+                    <div>
+                      <span className="font-medium text-gray-800">Hybryda</span>
+                      <p className="text-sm text-gray-600">Edytuj wygenerowaną nazwę</p>
+                    </div>
+                  </label>
+                  
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="namingMode"
                       value="custom"
                       checked={namingMode === 'custom'}
-                      onChange={(e) => setNamingMode(e.target.value as 'auto' | 'custom')}
+                      onChange={(e) => setNamingMode(e.target.value as 'auto' | 'custom' | 'original' | 'hybrid')}
                       className="w-4 h-4 text-purple-600"
                     />
                     <div>
@@ -603,9 +899,24 @@ export default function Sortownia() {
                       <p className="text-sm text-gray-600">Wpisz własną nazwę pliku</p>
                     </div>
                   </label>
+                  
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="namingMode"
+                      value="original"
+                      checked={namingMode === 'original'}
+                      onChange={(e) => setNamingMode(e.target.value as 'auto' | 'custom' | 'original' | 'hybrid')}
+                      className="w-4 h-4 text-purple-600"
+                    />
+                    <div>
+                      <span className="font-medium text-gray-800">Oryginalna nazwa</span>
+                      <p className="text-sm text-gray-600">Zachowaj nazwę z pliku</p>
+                    </div>
+                  </label>
                 </div>
                 
-                {namingMode === 'custom' && (
+                {(namingMode === 'custom' || namingMode === 'hybrid') && (
                   <>
                     <label className="block mb-2 font-semibold">Nazwa pliku:</label>
                     <input
@@ -635,6 +946,239 @@ export default function Sortownia() {
                   setSelectedFile(null)
                 }}
                 className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-lg font-semibold transition"
+              >
+                Anuluj
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal przenoszenia do folderu głównego */}
+      {showMainFolderModal && selectedFile && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div 
+            className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto"
+            style={coverUrl ? { backgroundColor: 'rgba(255, 255, 255, 0.98)' } : undefined}
+          >
+            <h2 className="text-2xl font-bold mb-4">Przenieś do folderu</h2>
+            <p className="text-gray-600 mb-6">
+              {selectedFiles.size > 0 ? (
+                <span>Plików do przeniesienia: <strong>{selectedFiles.size}</strong></span>
+              ) : (
+                <span>Plik: <strong>{selectedFile.name}</strong></span>
+              )}
+            </p>
+
+            {/* Breadcrumb */}
+            {mainFolderPath && (
+              <div className="mb-4 flex items-center gap-2 text-sm text-gray-600">
+                <button
+                  onClick={() => {
+                    setMainFolderPath('')
+                    setMainFolderContents([])
+                  }}
+                  className="hover:text-blue-600 font-semibold"
+                >
+                  📁 Foldery główne
+                </button>
+                {mainFolderPath.split('/').map((part, idx, arr) => (
+                  <span key={idx} className="flex items-center gap-2">
+                    <span>/</span>
+                    <button
+                      onClick={() => {
+                        const newPath = arr.slice(0, idx + 1).join('/')
+                        setMainFolderPath(newPath)
+                        loadMainFolderContents(newPath)
+                      }}
+                      className="hover:text-blue-600 font-semibold"
+                    >
+                      {part}
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Wybór folderu głównego */}
+            {!mainFolderPath && (
+              <div className="space-y-3 mb-6">
+                <button
+                  onClick={() => navigateToMainFolder('Bity')}
+                  className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition text-left flex items-center gap-2"
+                >
+                  <span>📁</span>
+                  <span>Bity</span>
+                  <span className="ml-auto">→</span>
+                </button>
+                <button
+                  onClick={() => navigateToMainFolder('Pliki')}
+                  className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition text-left flex items-center gap-2"
+                >
+                  <span>📁</span>
+                  <span>Pliki</span>
+                  <span className="ml-auto">→</span>
+                </button>
+                <button
+                  onClick={() => navigateToMainFolder('Teksty')}
+                  className="w-full px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition text-left flex items-center gap-2"
+                >
+                  <span>📁</span>
+                  <span>Teksty</span>
+                  <span className="ml-auto">→</span>
+                </button>
+              </div>
+            )}
+
+            {/* Lista podfolderów */}
+            {mainFolderPath && (
+              <div className="space-y-2 mb-6">
+                {/* Przycisk przeniesienia do bieżącego folderu */}
+                <button
+                  onClick={() => handleMoveToMainFolder()}
+                  className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition"
+                >
+                  ✓ Przenieś tutaj
+                </button>
+
+                {/* Tworzenie nowego folderu */}
+                <div className="border-t pt-4 mt-4">
+                  {!showCreateFolderInput ? (
+                    <button
+                      onClick={() => setShowCreateFolderInput(true)}
+                      className="w-full px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition text-sm font-semibold"
+                    >
+                      + Dodaj podfolder
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        value={newFolderName}
+                        onChange={(e) => setNewFolderName(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            handleCreateFolder()
+                          }
+                        }}
+                        placeholder="Nazwa folderu..."
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        autoFocus
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleCreateFolder}
+                          className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition text-sm font-semibold"
+                        >
+                          Utwórz
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowCreateFolderInput(false)
+                            setNewFolderName('')
+                          }}
+                          className="flex-1 px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg transition text-sm font-semibold"
+                        >
+                          Anuluj
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Lista podfolderów */}
+                <div className="border-t pt-4 mt-4">
+                  <h3 className="text-sm font-semibold text-gray-600 mb-3">Podfoldery:</h3>
+                  {mainFolderContents.filter(f => f.isDirectory).length === 0 ? (
+                    <p className="text-gray-500 text-sm italic">Brak podfolderów</p>
+                  ) : (
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {mainFolderContents.filter(f => f.isDirectory).map((folder) => (
+                        <button
+                          key={folder.name}
+                          onClick={() => navigateToSubfolder(folder.name)}
+                          className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg transition text-left flex items-center gap-2"
+                        >
+                          <span>📁</span>
+                          <span>{folder.name}</span>
+                          <span className="ml-auto">→</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Przyciski akcji */}
+            <div className="flex gap-3">
+              {mainFolderPath && (
+                <button
+                  onClick={navigateBack}
+                  className="flex-1 px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-semibold transition"
+                >
+                  ← Wstecz
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setShowMainFolderModal(false)
+                  setSelectedFile(null)
+                  setMainFolderPath('')
+                  setMainFolderContents([])
+                }}
+                className="flex-1 px-6 py-3 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg font-semibold transition"
+              >
+                Anuluj
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal tworzenia nowego projektu */}
+      {showCreateProjectModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div 
+            className="bg-white rounded-lg p-8 max-w-md w-full mx-4"
+            style={coverUrl ? { backgroundColor: 'rgba(255, 255, 255, 0.98)' } : undefined}
+          >
+            <h2 className="text-2xl font-bold mb-4">Stwórz nowy projekt</h2>
+            <p className="text-gray-600 mb-4">
+              Album: <strong>{albums.find(a => a.id === selectedAlbum)?.name}</strong>
+            </p>
+
+            <label className="block mb-2 font-semibold">Nazwa projektu:</label>
+            <input
+              type="text"
+              value={newProjectName}
+              onChange={(e) => setNewProjectName(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && !creatingProject) {
+                  handleCreateProject()
+                }
+              }}
+              placeholder="Wpisz nazwę projektu..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              autoFocus
+              disabled={creatingProject}
+            />
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleCreateProject}
+                disabled={creatingProject || !newProjectName.trim()}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-semibold transition"
+              >
+                {creatingProject ? 'Tworzenie...' : 'Utwórz'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowCreateProjectModal(false)
+                  setNewProjectName('')
+                }}
+                disabled={creatingProject}
+                className="flex-1 bg-gray-300 hover:bg-gray-400 disabled:bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-semibold transition"
               >
                 Anuluj
               </button>

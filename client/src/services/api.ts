@@ -113,6 +113,25 @@ export const api = {
     return handleResponse<Project>(response)
   },
 
+  async getProjectMetadata(albumId: string, projectName: string): Promise<Record<string, string>> {
+    const response = await fetch(`${API_BASE}/projects/${albumId}/${encodeURIComponent(projectName)}/metadata`)
+    return handleResponse(response)
+  },
+
+  async updateProjectMetadata(albumId: string, projectName: string, fields: Record<string, string>): Promise<Record<string, string>> {
+    const response = await fetch(`${API_BASE}/projects/${albumId}/${encodeURIComponent(projectName)}/metadata`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields }),
+    })
+    return handleResponse(response)
+  },
+
+  async getAllMetadataKeys(): Promise<string[]> {
+    const response = await fetch(`${API_BASE}/projects/metadata/all-keys`)
+    return handleResponse(response)
+  },
+
   async renumberProjects(
     albumId: string, 
     renumberingMap: Array<{ projectName: string; newNumber: number }>
@@ -279,12 +298,13 @@ export const api = {
     projectName: string,
     targetFolder: string,
     fileType?: string,
-    customName?: string
+    customName?: string,
+    useSciezkiFolder?: boolean
   ): Promise<{ newPath: string; newName: string }> {
     const response = await fetch(`${API_BASE}/sortownia/move-to-project`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fileName, albumId, projectName, targetFolder, fileType, customName }),
+      body: JSON.stringify({ fileName, albumId, projectName, targetFolder, fileType, customName, useSciezkiFolder }),
     })
     return handleResponse(response)
   },
@@ -307,6 +327,15 @@ export const api = {
     return handleResponse(response)
   },
 
+  async moveToMainFolder(fileName: string, targetFolder: string): Promise<{ message: string; newPath: string }> {
+    const response = await fetch(`${API_BASE}/sortownia/move-to-main-folder`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileName, targetFolder }),
+    })
+    return handleResponse(response)
+  },
+
   async arrangeVersions(
     albumId: string,
     projectName: string,
@@ -323,6 +352,15 @@ export const api = {
   // Proste foldery (Bity, Teksty, Pliki, Sortownia)
   async getSimpleFolderFiles(folderPath: string): Promise<any[]> {
     const response = await fetch(`${API_BASE}/simple-folders/${encodeURIComponent(folderPath)}/files`)
+    return handleResponse(response)
+  },
+
+  async createSimpleFolder(folderPath: string, folderName: string): Promise<{ message: string; path: string }> {
+    const response = await fetch(`${API_BASE}/simple-folders/create-folder`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ folderPath, folderName }),
+    })
     return handleResponse(response)
   },
 
@@ -448,5 +486,18 @@ export const api = {
     })
     return handleResponse(response)
   },
-}
 
+  // System - Quick Access
+  async openVSCode(): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE}/system/open-vscode`, {
+      method: 'POST',
+    })
+    return handleResponse(response)
+  },
+
+  async openNorfeuszFolder(): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE}/system/open-folder`, {
+      method: 'POST',
+    })
+    return handleResponse(response)
+  },}

@@ -173,7 +173,7 @@ export class FileManagementService {
 
     // Znajdź najwyższy numer wersji dla tego typu pliku
     let maxVersion = 0
-    const pattern = new RegExp(`^${normalizedProjectName}-${fileType}-(\\d+)\\${extension}$`)
+    const pattern = new RegExp(`^${normalizedProjectName}-${fileType}_(\\d+)\\${extension}$`)
 
     existingFiles.forEach((fileName) => {
       const match = fileName.match(pattern)
@@ -186,14 +186,14 @@ export class FileManagementService {
     })
 
     const nextVersion = (maxVersion + 1).toString().padStart(3, '0')
-    return `${normalizedProjectName}-${fileType}-${nextVersion}${extension}`
+    return `${normalizedProjectName}-${fileType}_${nextVersion}${extension}`
   }
 
   // Uzyskaj typ pliku na podstawie folderu docelowego
   getFileTypeByFolder(folderType: FolderType, specificType?: string): string {
     const typeMap: Record<string, string> = {
-      'Projekt FL': 'projekt_bit',
-      'Projekt Reaper': 'projekt_nawijka',
+      'Projekt FL': 'projekt',
+      'Projekt Reaper': 'projekt',
       'Tekst': 'tekst',
       'Demo bit': 'bit_demo',
       'Demo nawijka': 'nawijka_demo',
@@ -347,7 +347,8 @@ export class FileManagementService {
     projectName: string,
     targetFolder: FolderType,
     specificType?: string,
-    customName?: string
+    customName?: string,
+    useSciezkiFolder?: boolean
   ): Promise<{ newPath: string; newName: string }> {
     const sourcePath = path.join(BASE_PATH, 'Sortownia', fileName)
 
@@ -355,13 +356,29 @@ export class FileManagementService {
       throw new Error('Plik nie istnieje w sortowni')
     }
 
-    const targetFolderPath = path.join(BASE_PATH, albumId, projectName, targetFolder)
+    let targetFolderPath = path.join(BASE_PATH, albumId, projectName, targetFolder)
+    
+    // Jeśli wybrano Ścieżki dla Demo bit, dodaj podfolder
+    if (useSciezkiFolder && targetFolder === 'Demo bit') {
+      targetFolderPath = path.join(targetFolderPath, 'Ścieżki')
+    }
+    
     await fs.ensureDir(targetFolderPath)
 
     const extension = path.extname(sourcePath)
+    const originalFileName = path.basename(sourcePath)
     let newFileName: string
     
-    if (customName) {
+    if (useSciezkiFolder && targetFolder === 'Demo bit') {
+      // W folderze Ścieżki zachowaj oryginalną nazwę
+      newFileName = originalFileName
+      
+      // Sprawdź czy plik o takiej nazwie już istnieje
+      const targetPath = path.join(targetFolderPath, newFileName)
+      if (await fs.pathExists(targetPath)) {
+        throw new Error(`Plik o nazwie "${newFileName}" już istnieje w folderze Ścieżki`)
+      }
+    } else if (customName) {
       // Użyj niestandardowej nazwy (dodaj rozszerzenie jeśli nie ma)
       newFileName = customName.endsWith(extension) ? customName : `${customName}${extension}`
       

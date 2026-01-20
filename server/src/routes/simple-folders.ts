@@ -57,4 +57,37 @@ router.get('/:folderPath/files', async (req: Request, res: Response) => {
   }
 })
 
+// Utwórz nowy folder
+router.post('/create-folder', async (req: Request, res: Response) => {
+  try {
+    const { folderPath, folderName } = req.body
+
+    if (!folderPath || !folderName) {
+      return res.status(400).json({ success: false, error: 'Wymagane pola: folderPath, folderName' })
+    }
+
+    const decodedPath = decodeURIComponent(folderPath)
+    const fullPath = path.join(BASE_PATH, decodedPath, folderName)
+
+    // Sprawdź czy folder już istnieje
+    if (await fs.pathExists(fullPath)) {
+      return res.status(409).json({ success: false, error: 'Folder o tej nazwie już istnieje' })
+    }
+
+    // Utwórz folder
+    await fs.ensureDir(fullPath)
+
+    res.json({ 
+      success: true, 
+      data: { 
+        message: 'Folder utworzony',
+        path: fullPath 
+      } 
+    })
+  } catch (error: any) {
+    console.error('Error creating folder:', error)
+    res.status(500).json({ success: false, error: error.message || 'Nie udało się utworzyć folderu' })
+  }
+})
+
 export default router

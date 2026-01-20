@@ -1,7 +1,7 @@
 @echo off
-title Manager Norfa - Launcher
+title Manager Norfeusza - Launcher
 echo ========================================
-echo    Manager Norfa - Uruchamianie...
+echo    Manager Norfeusza - Uruchamianie...
 echo ========================================
 echo.
 
@@ -46,13 +46,13 @@ echo Zamknij to okno aby zatrzymać aplikację
 echo.
 
 REM Uruchom backend w nowym oknie
-start "Manager Norfa - Backend" cmd /k "cd /d "%~dp0server" && npm run dev"
+start "Manager Norfeusza - Backend" cmd /k "cd /d "%~dp0server" && npm run dev"
 
 REM Poczekaj 3 sekundy na uruchomienie backendu
 timeout /t 3 /nobreak >nul
 
 REM Uruchom frontend w nowym oknie
-start "Manager Norfa - Frontend" cmd /k "cd /d "%~dp0client" && npm run dev"
+start "Manager Norfeusza - Frontend" cmd /k "cd /d "%~dp0client" && npm run dev"
 
 REM Poczekaj 5 sekund na uruchomienie frontendu
 timeout /t 5 /nobreak >nul

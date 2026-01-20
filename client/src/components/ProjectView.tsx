@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
 import AllFilesModal from './AllFilesModal'
@@ -21,6 +21,12 @@ export default function ProjectView() {
   const [showAllFilesModal, setShowAllFilesModal] = useState(false)
   const [allFiles, setAllFiles] = useState<FileInfo[]>([])
   const [loadingFiles, setLoadingFiles] = useState(false)
+  const [metadata, setMetadata] = useState<Record<string, string>>({})
+  const [isEditingMetadata, setIsEditingMetadata] = useState(false)
+  const [editedMetadata, setEditedMetadata] = useState<Record<string, string>>({})
+  const [allMetadataKeys, setAllMetadataKeys] = useState<string[]>([])
+  const [showAddFieldModal, setShowAddFieldModal] = useState(false)
+  const [newFieldName, setNewFieldName] = useState('')
 
   useEffect(() => {
     const checkAlbumCover = async () => {
@@ -62,6 +68,25 @@ export default function ProjectView() {
     }
     checkAlbumCover()
   }, [albumId])
+
+  // Load metadata
+  useEffect(() => {
+    const loadMetadata = async () => {
+      if (!albumId || !projectName) return
+      
+      try {
+        const data = await api.getProjectMetadata(albumId, projectName)
+        setMetadata(data)
+        setEditedMetadata(data)
+        
+        const keys = await api.getAllMetadataKeys()
+        setAllMetadataKeys(keys)
+      } catch (error) {
+        console.error('Error loading metadata:', error)
+      }
+    }
+    loadMetadata()
+  }, [albumId, projectName])
 
   const folders = [
     {
@@ -187,10 +212,10 @@ export default function ProjectView() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {folders.map((folder) => (
-                <div
+                <Link
                   key={folder.name}
-                  onClick={() => navigate(`/folder/${albumId}/${projectName}/${encodeURIComponent(folder.name)}`)}
-                  className="bg-transparent hover:bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer p-8 border-2 border-blue-500"
+                  to={`/folder/${albumId}/${projectName}/${encodeURIComponent(folder.name)}`}
+                  className="block bg-transparent hover:bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer p-8 border-2 border-blue-500"
                 >
                   <div className="flex flex-col items-center text-center">
                     <div className="text-6xl mb-4 drop-shadow-lg">{folder.icon}</div>
@@ -201,16 +226,94 @@ export default function ProjectView() {
                       Kliknij aby otworzyć
                     </p>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
 
             <div className="mt-8 bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Informacje</h2>
-              <div className="space-y-2 text-gray-600">
-                <p><strong>Album:</strong> {albumId}</p>
-                <p><strong>Projekt:</strong> {projectName}</p>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-800">Informacje</h2>
+                {!isEditingMetadata ? (
+                  <button
+                    onClick={() => {
+                      setIsEditingMetadata(true)
+                      setEditedMetadata({...metadata})
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  >
+                    Edytuj
+                  </button>
+                ) : (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={async () => {
+                        try {
+                          const updated = await api.updateProjectMetadata(albumId!, projectName!, editedMetadata)
+                          setMetadata(updated)
+                          setEditedMetadata(updated)
+                          setIsEditingMetadata(false)
+                        } catch (error: any) {
+                          alert(`Błąd: ${error.message}`)
+                        }
+                      }}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                    >
+                      Zapisz
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditedMetadata({...metadata})
+                        setIsEditingMetadata(false)
+                      }}
+                      className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition"
+                    >
+                      Anuluj
+                    </button>
+                  </div>
+                )}
               </div>
+
+              <div className="space-y-3">
+                {Object.entries(isEditingMetadata ? editedMetadata : metadata).map(([key, value]) => (
+                  <div key={key} className="flex items-center gap-3">
+                    <label className="w-32 font-semibold text-gray-700">{key}:</label>
+                    {isEditingMetadata ? (
+                      <div className="flex-1 flex gap-2">
+                        <input
+                          type="text"
+                          value={value}
+                          onChange={(e) => setEditedMetadata({
+                            ...editedMetadata,
+                            [key]: e.target.value
+                          })}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <button
+                          onClick={() => {
+                            const newMetadata = {...editedMetadata}
+                            delete newMetadata[key]
+                            setEditedMetadata(newMetadata)
+                          }}
+                          className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+                        >
+                          Usuń
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-gray-600">{value}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {isEditingMetadata && (
+                <button
+                  onClick={() => setShowAddFieldModal(true)}
+                  className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+                >
+                  + Dodaj pole
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -224,6 +327,74 @@ export default function ProjectView() {
         title={`Wszystkie pliki w projekcie "${projectName}"`}
         level="project"
       />
+
+      {/* Modal dodawania pola */}
+      {showAddFieldModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96">
+            <h3 className="text-xl font-bold mb-4">Dodaj pole</h3>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Wybierz istniejące pole lub wpisz nowe
+              </label>
+              <select
+                value={newFieldName}
+                onChange={(e) => setNewFieldName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
+              >
+                <option value="">-- Wybierz lub wpisz --</option>
+                {allMetadataKeys
+                  .filter(key => !Object.keys(editedMetadata).includes(key))
+                  .map(key => (
+                    <option key={key} value={key}>{key}</option>
+                  ))
+                }
+                <option value="__custom__">✏️ Nowe pole...</option>
+              </select>
+              
+              {newFieldName === '__custom__' && (
+                <input
+                  type="text"
+                  value=""
+                  onChange={(e) => setNewFieldName(e.target.value)}
+                  placeholder="Nazwa nowego pola"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoFocus
+                />
+              )}
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => {
+                  setShowAddFieldModal(false)
+                  setNewFieldName('')
+                }}
+                className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition"
+              >
+                Anuluj
+              </button>
+              <button
+                onClick={() => {
+                  if (newFieldName && newFieldName !== '__custom__') {
+                    setEditedMetadata({
+                      ...editedMetadata,
+                      [newFieldName]: ''
+                    })
+                    setShowAddFieldModal(false)
+                    setNewFieldName('')
+                  }
+                }}
+                disabled={!newFieldName || newFieldName === '__custom__'}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+              >
+                Dodaj
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

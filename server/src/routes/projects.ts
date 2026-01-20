@@ -10,7 +10,7 @@ router.post('/', async (req: Request, res: Response) => {
     const { 
       name, 
       albumId = 'Robocze',
-      useNumbering = true,
+      useNumbering = false,
       numberingMode = 'auto',
       projectNumber
     } = req.body as CreateProjectRequest
@@ -92,6 +92,54 @@ router.delete('/:albumId/:projectName', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Error deleting project:', error)
     res.status(500).json({ success: false, error: error.message || 'Nie udało się usunąć projektu' })
+  }
+})
+
+// Pobierz metadane projektu
+router.get('/:albumId/:projectName/metadata', async (req: Request, res: Response) => {
+  try {
+    const { albumId, projectName } = req.params
+    const metadata = await fileSystemService.getProjectMetadata(
+      albumId,
+      decodeURIComponent(projectName)
+    )
+    res.json({ success: true, data: metadata })
+  } catch (error: any) {
+    console.error('Error getting project metadata:', error)
+    res.status(500).json({ success: false, error: error.message || 'Nie udało się pobrać metadanych' })
+  }
+})
+
+// Zaktualizuj metadane projektu
+router.put('/:albumId/:projectName/metadata', async (req: Request, res: Response) => {
+  try {
+    const { albumId, projectName } = req.params
+    const { fields } = req.body
+
+    if (!fields) {
+      return res.status(400).json({ success: false, error: 'Brak pól do aktualizacji' })
+    }
+
+    const metadata = await fileSystemService.updateProjectMetadata(
+      albumId,
+      decodeURIComponent(projectName),
+      fields
+    )
+    res.json({ success: true, data: metadata })
+  } catch (error: any) {
+    console.error('Error updating project metadata:', error)
+    res.status(500).json({ success: false, error: error.message || 'Nie udało się zaktualizować metadanych' })
+  }
+})
+
+// Pobierz wszystkie użyte klucze metadanych
+router.get('/metadata/all-keys', async (req: Request, res: Response) => {
+  try {
+    const keys = await fileSystemService.getAllMetadataKeys()
+    res.json({ success: true, data: keys })
+  } catch (error: any) {
+    console.error('Error getting metadata keys:', error)
+    res.status(500).json({ success: false, error: error.message || 'Nie udało się pobrać kluczy' })
   }
 })
 

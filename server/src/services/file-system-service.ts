@@ -336,6 +336,7 @@ export class FileSystemService {
     await fs.ensureDir(path.join(projectPath, 'Projekt Reaper'))
     await fs.ensureDir(path.join(projectPath, 'Tekst'))
     await fs.ensureDir(path.join(projectPath, 'Demo bit'))
+    await fs.ensureDir(path.join(projectPath, 'Demo bit', 'Ścieżki'))
     await fs.ensureDir(path.join(projectPath, 'Demo nawijka'))
     await fs.ensureDir(path.join(projectPath, 'Demo utwor'))
     await fs.ensureDir(path.join(projectPath, 'Gotowe'))
@@ -593,6 +594,76 @@ export class FileSystemService {
     }
 
     console.log(`✅ Przenumerowano projekty w albumie "${albumId}"`)
+  }
+
+  // Metadane projektu
+  private async getProjectMetadataPath(albumId: string, projectName: string): Promise<string> {
+    return path.join(this.albumsPath, albumId, projectName, '.metadata.json')
+  }
+
+  async getProjectMetadata(albumId: string, projectName: string): Promise<Record<string, string>> {
+    const metadataPath = await this.getProjectMetadataPath(albumId, projectName)
+    try {
+      if (await fs.pathExists(metadataPath)) {
+        const data = await fs.readJson(metadataPath)
+        return data.fields || {}
+      }
+    } catch (error) {
+      console.error(`Error reading project metadata:`, error)
+    }
+    
+    // Zwróć domyślne pola
+    return {
+      'Album': albumId,
+      'Projekt': projectName,
+      'Produkcja': '',
+      'BPM': ''
+    }
+  }
+
+  async updateProjectMetadata(albumId: string, projectName: string, fields: Record<string, string>): Promise<Record<string, string>> {
+    const metadataPath = await this.getProjectMetadataPath(albumId, projectName)
+    const projectPath = path.join(this.albumsPath, albumId, projectName)
+    
+    if (!(await fs.pathExists(projectPath))) {
+      throw new Error('Projekt nie istnieje')
+    }
+
+    await fs.writeJson(metadataPath, { fields }, { spaces: 2 })
+    return fields
+  }
+
+  async getAllMetadataKeys(): Promise<string[]> {
+    const keys = new Set<string>(['Album', 'Projekt', 'Produkcja', 'BPM'])
+    
+    try {
+      const albums = await this.getAlbums()
+      
+      for (const album of albums) {
+        const albumPath = path.join(this.albumsPath, album.id)
+        const entries = await fs.readdir(albumPath, { withFileTypes: true })
+        
+        for (const entry of entries) {
+          if (entry.isDirectory() && !entry.name.startsWith('.')) {
+            const metadataPath = path.join(albumPath, entry.name, '.metadata.json')
+            if (await fs.pathExists(metadataPath)) {
+              try {
+                const data = await fs.readJson(metadataPath)
+                if (data.fields) {
+                  Object.keys(data.fields).forEach(key => keys.add(key))
+                }
+              } catch (error) {
+                // Ignoruj błędy pojedynczych plików
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error collecting metadata keys:', error)
+    }
+    
+    return Array.from(keys).sort()
   }
 }
 

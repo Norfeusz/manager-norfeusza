@@ -2,6 +2,14 @@
 
 Zaawansowane narzędzie webowe do zarządzania projektami muzycznymi i procesem twórczym.
 
+## 🖥️ Instalacja na Pulpicie
+
+Aby utworzyć skrót na pulpicie z ikoną:
+
+1. Kliknij dwukrotnie na plik `create-desktop-shortcut.vbs`
+2. Skrót "Manager Norfeusza" pojawi się na pulpicie
+3. Kliknij dwukrotnie skrót aby uruchomić aplikację
+
 ## 🎯 Funkcjonalności
 
 ### ✅ Faza 1: Podstawy (Ukończona)

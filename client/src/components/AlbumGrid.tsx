@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { Album } from '../../../shared/src/types'
 import { api } from '../services/api'
 import AllFilesModal from './AllFilesModal'
@@ -260,6 +260,38 @@ export default function AlbumGrid() {
                 >
                   + Nowy Album
                 </button>
+                <div className="w-px h-10 bg-white/30 mx-2" />
+                <button
+                  onClick={async () => {
+                    try {
+                      await api.openVSCode()
+                    } catch (error) {
+                      console.error('Błąd otwierania VSCode:', error)
+                    }
+                  }}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  title="Otwórz projekt w Visual Studio Code"
+                >
+                  <svg className="w-8 h-8" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M95.8 27.5L74.3 11.2c-1.5-1.1-3.6-.9-4.9.5L37.8 44.3 23.4 34.1c-.9-.6-2.1-.6-2.9 0l-4.3 3.6c-.8.7-.8 2 0 2.7l11.7 9.6-11.7 9.6c-.8.7-.8 2 0 2.7l4.3 3.6c.9.6 2.1.6 2.9 0l14.4-10.2 31.6 32.6c1.3 1.4 3.4 1.6 4.9.5l21.5-16.3c1.3-1 2.1-2.6 2.1-4.2V31.7c0-1.6-.8-3.2-2.1-4.2z" fill="#007ACC"/>
+                    <path d="M74.3 11.2L37.8 44.3l-14.4-10.2c-.9-.6-2.1-.6-2.9 0l-4.3 3.6c-.8.7-.8 2 0 2.7l11.7 9.6-11.7 9.6c-.8.7-.8 2 0 2.7l4.3 3.6c.9.6 2.1.6 2.9 0l14.4-10.2 36.5 33.1c1.3 1.4 3.4 1.6 4.9.5l21.5-16.3c1.3-1 2.1-2.6 2.1-4.2V31.7c0-1.6-.8-3.2-2.1-4.2L74.3 11.2z" fill="#007ACC"/>
+                  </svg>
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      await api.openNorfeuszFolder()
+                    } catch (error) {
+                      console.error('Błąd otwierania folderu:', error)
+                    }
+                  }}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  title="Otwórz folder Norfeusz"
+                >
+                  <div className="w-8 h-8 flex items-center justify-center text-2xl">
+                    📁
+                  </div>
+                </button>
               </>
             )}
           </div>
@@ -277,15 +309,16 @@ export default function AlbumGrid() {
           {gotoweAlbums.length > 0 ? (
             <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-4 rounded-lg transition ${dragOverSection === 'gotowe' ? 'bg-green-100 border-2 border-green-500' : ''}`}>
               {gotoweAlbums.map((album, index) => (
-                <div
+                <Link
                   key={album.id}
+                  to={organizingMode ? '#' : `/album/${album.id}`}
                   draggable={organizingMode}
                   onDragStart={(e) => handleDragStart(album, e)}
                   onDragEnd={handleDragEnd}
                   onDragOver={(e) => handleDragOver(e, 'gotowe', index)}
                   onDrop={(e) => handleDrop(e, 'gotowe', index)}
-                  onClick={() => !organizingMode && navigate(`/album/${album.id}`)}
-                  className={`bg-transparent hover:bg-white rounded-lg shadow-md hover:shadow-xl transition p-6 border-2 ${
+                  onClick={(e) => organizingMode && e.preventDefault()}
+                  className={`block bg-transparent hover:bg-white rounded-lg shadow-md hover:shadow-xl transition p-6 border-2 ${
                     dragOverIndex === index && dragOverSection === 'gotowe' && draggedAlbum?.id !== album.id
                       ? 'border-green-500 border-l-4'
                       : 'border-blue-500 hover:border-blue-500'
@@ -351,7 +384,7 @@ export default function AlbumGrid() {
                   <p className="text-center text-gray-600 text-sm">
                     {album.projectCount || 0} {album.projectCount === 1 ? 'projekt' : 'projektów'}
                   </p>
-                </div>
+                </Link>
               ))}
             </div>
           ) : (
@@ -373,15 +406,16 @@ export default function AlbumGrid() {
           {rzezbAlbums.length > 0 ? (
             <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-4 rounded-lg transition ${dragOverSection === 'rzezbione' ? 'bg-purple-100 border-2 border-purple-500' : ''}`}>
               {rzezbAlbums.map((album, index) => (
-                <div
+                <Link
                   key={album.id}
+                  to={organizingMode ? '#' : `/album/${album.id}`}
                   draggable={organizingMode}
                   onDragStart={(e) => handleDragStart(album, e)}
                   onDragEnd={handleDragEnd}
                   onDragOver={(e) => handleDragOver(e, 'rzezbione', index)}
                   onDrop={(e) => handleDrop(e, 'rzezbione', index)}
-                  onClick={() => !organizingMode && navigate(`/album/${album.id}`)}
-                  className={`bg-transparent hover:bg-white rounded-lg shadow-md hover:shadow-xl transition p-6 border-2 ${
+                  onClick={(e) => organizingMode && e.preventDefault()}
+                  className={`block bg-transparent hover:bg-white rounded-lg shadow-md hover:shadow-xl transition p-6 border-2 ${
                     dragOverIndex === index && dragOverSection === 'rzezbione' && draggedAlbum?.id !== album.id
                       ? 'border-purple-500 border-l-4'
                       : 'border-blue-500 hover:border-blue-500'
@@ -447,7 +481,7 @@ export default function AlbumGrid() {
                   <p className="text-center text-gray-600 text-sm">
                     {album.projectCount || 0} {album.projectCount === 1 ? 'projekt' : 'projektów'}
                   </p>
-                </div>
+                </Link>
               ))}
             </div>
           ) : (
@@ -464,16 +498,16 @@ export default function AlbumGrid() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {fileFolders.map(folder => (
-              <div
+              <Link
                 key={folder.path}
-                onClick={() => navigate(folder.path)}
-                className="bg-transparent hover:bg-white rounded-lg shadow-md hover:shadow-xl transition border-2 border-blue-500 hover:border-blue-500 overflow-hidden cursor-pointer p-8"
+                to={folder.path}
+                className="block bg-transparent hover:bg-white rounded-lg shadow-md hover:shadow-xl transition border-2 border-blue-500 hover:border-blue-500 overflow-hidden cursor-pointer p-8"
               >
                 <div className="text-center">
                   <div className="text-6xl mb-4">{folder.icon}</div>
                   <h3 className="text-xl font-bold text-gray-800">{folder.name}</h3>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
